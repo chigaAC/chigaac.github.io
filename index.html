@@ -5,6 +5,7 @@
   <title>Google Drive プロジェクト作成</title>
 </head>
 <body>
+    <button onclick="storageClear()">クリア</button>
   <p id="TokenTimer">※ここに時計が表示されます。</p>
   <h2>📁 Google Drive プロジェクト作成</h2>
   <button onclick="redirectLogin()">Googleでログイン</button>
@@ -18,6 +19,14 @@
   <pre id="log">(ここにログが表示されます)</pre>
 
   <script>
+function storageClear() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('tokenExpiresAt');
+  localStorage.removeItem('pendingProjectName');
+  localStorage.removeItem('pendingParentId');
+  localStorage.removeItem('tokenExpiresAt');
+}
+
     const token = localStorage.getItem("accessToken");
 const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
     function set2fig(num) {
