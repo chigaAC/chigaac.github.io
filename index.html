@@ -18,6 +18,8 @@
   <pre id="log">(ここにログが表示されます)</pre>
 
   <script>
+    const token = localStorage.getItem("accessToken");
+const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
     function set2fig(num) {
    // 桁数が1桁だったら先頭に0を加えて2桁に調整する
    var ret;
@@ -26,11 +28,21 @@
    return ret;
 }
 function showClock() {
-   var nowTime = new Date();
+  if (token && Date.now() < expiresAt) {
+     var nowTime = new Date();
    var nowHour = set2fig( nowTime.getHours() );
    var nowMin  = set2fig( nowTime.getMinutes() );
    var nowSec  = set2fig( nowTime.getSeconds() );
    var msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
+} else {
+  // トークン期限切れ → 再ログインが必要
+    var msg="ログインが必要です。";
+}
+  /* var nowTime = new Date();
+   var nowHour = set2fig( nowTime.getHours() );
+   var nowMin  = set2fig( nowTime.getMinutes() );
+   var nowSec  = set2fig( nowTime.getSeconds() );
+   var msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
    document.getElementById("TokenTimer").innerHTML = msg;
 }
 setInterval('showClock()',1000);
@@ -188,6 +200,7 @@ function redirectLogin() {
         log("✅ プロジェクト作成完了");
         const mapInfo = await upload.json();
         localStorage.setItem("accessToken", token);
+        localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
         localStorage.setItem("mapFileId", mapInfo.id);
         window.location.href = "dashboard.html";
       } else {
