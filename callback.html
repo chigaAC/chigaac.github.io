@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>認証リダイレクト処理</title>
+</head>
+<body>
+  <p>🔁 認証トークン取得中...</p>
+  <script>
+    const hash = new URLSearchParams(window.location.hash.substring(1));
+    const token = hash.get("access_token");
+    if (token) {
+      localStorage.setItem("accessToken", token);
+      window.location.href = "index.html";
+    } else {
+      document.body.textContent = "❌ 認証に失敗しました。";
+    }
+  </script>
+</body>
+</html>
