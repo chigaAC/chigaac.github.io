@@ -28,7 +28,7 @@ const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
    return ret;
 }
 function showClock() {
-  if (token && Date.now() < expiresAt) {
+  if (token && parseInt(Date.now()) < expiresAt) {
      var nowTime = new Date();
      nowTime=parseInt(nowTime.toString())-expiresAt;
    /*var nowHour = set2fig( expiresAt.getHours()-nowTime.getHours() );
@@ -36,10 +36,10 @@ function showClock() {
    var nowSec  = set2fig( expiresAt.getSeconds()-nowTime.getSeconds() );
    var msg = "再ログインが必要になるまで後" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
     
-   var msg = "再ログインが必要になるまで後" + nowTime+ " です。";
+   var msg = "再ログインが必要になるまで後" + nowTime+ " です。"+expiresAt;
 } else {
   // トークン期限切れ → 再ログインが必要
-    var msg="ログインが必要です。";
+    var msg="ログインが必要です。"+expiresAt;
 }
   /* var nowTime = new Date();
    var nowHour = set2fig( nowTime.getHours() );
