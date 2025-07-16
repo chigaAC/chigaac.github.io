@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>統括ページ</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    #header { position: sticky; top: 0; background: white; padding: 0.5em; border-bottom: 1px solid #ccc; }
+    #fileList a { display: block; margin: 0.5em 0; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <button onclick="createMemo()">📝 メモ新規作成</button>
+  </div>
+
+  <h3>📄 ファイル一覧</h3>
+  <div id="fileList">(読み込み中...)</div>
+
+  <script>
+    const token = localStorage.getItem("accessToken");
+    const mapFileId = localStorage.getItem("mapFileId");
+
+    async function fetchMapJson() {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    }
+
+    async function listFiles(folderId) {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      return data.files || [];
+    }
+
+    async function displayFiles() {
+      const listEl = document.getElementById("fileList");
+      try {
+        const map = await fetchMapJson();
+        const memoFiles = await listFiles(map.folders.memo);
+        const embedFiles = await listFiles(map.folders.embed);
+
+        listEl.innerHTML = "";
+
+        listEl.innerHTML += "<strong>🗂 メモ:</strong><br/>";
+        memoFiles.forEach(f => {
+          const a = document.createElement("a");
+          a.href = `https://drive.google.com/file/d/${f.id}/view`;
+          a.textContent = f.name;
+          a.target = "_blank";
+          listEl.appendChild(a);
+        });
+
+        listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
+        embedFiles.forEach(f => {
+          const a = document.createElement("a");
+          a.href = `https://drive.google.com/file/d/${f.id}/view`;
+          a.textContent = f.name;
+          a.target = "_blank";
+          listEl.appendChild(a);
+        });
+
+      } catch (e) {
+        listEl.textContent = "❌ エラー: map.jsonの読み込みに失敗しました";
+        console.error(e);
+      }
+    }
+
+    async function createMemo() {
+      const map = await fetchMapJson();
+      const fileName = `新規メモ_${Date.now()}.txt`;
+
+      const metadata = {
+        name: fileName,
+        mimeType: "text/plain",
+        parents: [map.folders.memo]
+      };
+
+      const form = new FormData();
+      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      form.append("file", new Blob([""], { type: "text/plain" }));
+
+      const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form
+      });
+
+      if (res.ok) {
+        const newFile = await res.json();
+        window.open(`edit.html?id=${newFile.id}`, "_blank");
+      } else {
+        alert("❌ メモ作成に失敗しました");
+      }
+    }
+
+    displayFiles();
+  </script>
+</body>
+</html>
