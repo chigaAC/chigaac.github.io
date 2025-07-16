@@ -143,6 +143,10 @@
 
       if (upload.ok) {
         log("✅ プロジェクト作成完了");
+        const mapInfo = await upload.json();
+        localStorage.setItem("accessToken", token);
+        localStorage.setItem("mapFileId", mapInfo.id);
+        window.location.href = "dashboard.html";
       } else {
         log("❌ map.json アップロード失敗");
       }
