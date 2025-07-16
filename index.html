@@ -84,8 +84,8 @@ function redirectLogin() {
     include_granted_scopes: "true"
   });
   location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-  localStorage.setItem("accessToken", token);
-localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
+  /*localStorage.setItem("accessToken", token);
+localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());*/
 }
     function startProjectCreation() {
   const token = localStorage.getItem("accessToken");
