@@ -6,13 +6,14 @@
 </head>
 <body>
   <h2>📁 Google Drive プロジェクト作成</h2>
+  <button onclick="redirectLogin()">Googleでログイン</button>
 
   <input type="text" id="projectName" placeholder="プロジェクト名を入力" /><br><br>
 
   <button onclick="listFolders()">📂 親フォルダ選択</button>
   <div id="folderList">(フォルダ一覧がここに表示されます)</div><br>
 
-  <button onclick="redirectSignIn()">Googleでログインして作成</button>
+<button onclick="startProjectCreation()">プロジェクト作成</button>
   <pre id="log">(ここにログが表示されます)</pre>
 
   <script>
@@ -22,7 +23,7 @@
 
     let selectedParentId = null;
     const log = msg => document.getElementById("log").textContent += `\n${msg}`;
-
+/*
     function redirectSignIn() {
       const projectName = document.getElementById("projectName").value.trim();
       if (!projectName) return log("❌ プロジェクト名を入力してください");
@@ -39,8 +40,32 @@
         include_granted_scopes: "true"
       });
       location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-    }
+    }*/
+function redirectLogin() {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "token",
+    scope: scope,
+    include_granted_scopes: "true"
+  });
+  location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+    function startProjectCreation() {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return log("❌ トークンが未取得です（Googleログイン後に再度お試しください）");
 
+  const projectName = document.getElementById("projectName").value.trim();
+  if (!projectName) return log("❌ プロジェクト名を入力してください");
+
+  if (!selectedParentId) return log("❌ 親フォルダを選択してください");
+
+  localStorage.setItem("pendingProjectName", projectName);
+  localStorage.setItem("pendingParentId", selectedParentId);
+
+  // 作成実行は token 取得済みなので createProject を直接呼べる
+  createProject(projectName, selectedParentId, token);
+}
     async function listFolders() {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -66,7 +91,7 @@
         div.appendChild(document.createElement("br"));
       });
     }
-
+/*
     window.onload = () => {
       const token = localStorage.getItem("accessToken");
       const projectName = localStorage.getItem("pendingProjectName");
@@ -78,7 +103,7 @@
         localStorage.removeItem("pendingParentId");
       }
     };
-
+*/
     async function createProject(name, parentId, token) {
       log(`📁 '${name}' プロジェクトを作成中...`);
 
