@@ -22,10 +22,9 @@
   <script>
 function storageClear() {
   localStorage.removeItem('accessToken');
-  localStorage.removeItem('tokenExpiresAt');
+  localStorage.removeItem('accessTokenExpiresAt');
   localStorage.removeItem('pendingProjectName');
   localStorage.removeItem('pendingParentId');
-  localStorage.removeItem('tokenExpiresAt');
 }
 function updateLoginStatus() {
   const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
