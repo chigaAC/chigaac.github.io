@@ -30,10 +30,10 @@ const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
 function showClock() {
   if (token && Date.now() < expiresAt) {
      var nowTime = new Date();
-   var nowHour = set2fig( nowTime.getHours() );
-   var nowMin  = set2fig( nowTime.getMinutes() );
-   var nowSec  = set2fig( nowTime.getSeconds() );
-   var msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
+   var nowHour = set2fig( expiresAt.getHours()-nowTime.getHours() );
+   var nowMin  = set2fig( expiresAt.getMinutes()-nowTime.getMinutes() );
+   var nowSec  = set2fig( expiresAt.getSeconds()-nowTime.getSeconds() );
+   var msg = "再ログインが必要になるまで後" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
 } else {
   // トークン期限切れ → 再ログインが必要
     var msg="ログインが必要です。";
@@ -80,7 +80,8 @@ function redirectLogin() {
     include_granted_scopes: "true"
   });
   location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-          localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
+  localStorage.setItem("accessToken", token);
+localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
 }
     function startProjectCreation() {
   const token = localStorage.getItem("accessToken");
