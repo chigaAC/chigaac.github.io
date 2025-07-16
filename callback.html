@@ -40,33 +40,3 @@
 </body>
 </html>
 
-/*<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>認証リダイレクト処理</title>
-</head>
-<body>
-  <p>🔁 認証トークン取得中...</p>
-  <script>
-    //const hash = new URLSearchParams(window.location.hash.substring(1));
-    //const token = hash.get("access_token");
-    //const expiresIn = parseInt(params.get("expires_in"));
-    const hash = location.hash.substring(1);
-const params = new URLSearchParams(hash);
-const token = params.get("access_token");
-const expiresIn = parseInt(params.get("expires_in"));
-    if (token&&expiresIn) {
-      //localStorage.setItem("accessToken", token);
-      //localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
-        const expiresAt = Date.now() + expiresIn * 1000;
-  localStorage.setItem("accessToken", token);
-  localStorage.setItem("accessTokenExpiresAt", expiresAt);
-      window.location.href = "index.html";
-    } else {
-      document.body.textContent = "❌ 認証に失敗しました。";
-    }
-  </script>
-</body>
-</html>
-*/
