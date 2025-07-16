@@ -9,9 +9,13 @@
   <script>
     const hash = new URLSearchParams(window.location.hash.substring(1));
     const token = hash.get("access_token");
-    if (token) {
-      localStorage.setItem("accessToken", token);
+    const expiresIn = parseInt(params.get("expires_in"));
+    if (token&&expiresIn) {
+      //localStorage.setItem("accessToken", token);
       //localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
+        const expiresAt = Date.now() + expiresIn * 1000;
+  localStorage.setItem("accessToken", token);
+  localStorage.setItem("accessTokenExpiresAt", expiresAt.toString());
       window.location.href = "index.html";
     } else {
       document.body.textContent = "❌ 認証に失敗しました。";
