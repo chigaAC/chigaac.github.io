@@ -27,26 +27,27 @@ const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
    else { ret = num; }
    return ret;
 }
-function showClock() {
+function showClock() {/*
   if (token && parseInt(Date.now()) < expiresAt) {
      var nowTime = new Date();
-     nowTime=parseInt(nowTime.toString())-expiresAt;
+     nowTime=parseInt(nowTime.toString())-expiresAt;*/
    /*var nowHour = set2fig( expiresAt.getHours()-nowTime.getHours() );
    var nowMin  = set2fig( expiresAt.getMinutes()-nowTime.getMinutes() );
    var nowSec  = set2fig( expiresAt.getSeconds()-nowTime.getSeconds() );
    var msg = "再ログインが必要になるまで後" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
-    
+    /*
    var msg = "再ログインが必要になるまで後" + nowTime+ " です。"+expiresAt;
 } else {
   // トークン期限切れ → 再ログインが必要
     var msg="ログインが必要です。"+expiresAt;
-}
+}*/
   /* var nowTime = new Date();
    var nowHour = set2fig( nowTime.getHours() );
    var nowMin  = set2fig( nowTime.getMinutes() );
    var nowSec  = set2fig( nowTime.getSeconds() );
    var msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
-   document.getElementById("TokenTimer").innerHTML = msg;
+  
+   document.getElementById("TokenTimer").innerHTML = localStorage.getItem("tokenExpiresAt");
 }
 setInterval('showClock()',1000);
 
