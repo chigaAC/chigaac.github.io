@@ -6,10 +6,52 @@
 </head>
 <body>
   <p>🔁 認証トークン取得中...</p>
-  <script>/*
-    const hash = new URLSearchParams(window.location.hash.substring(1));
-    const token = hash.get("access_token");
-    const expiresIn = parseInt(params.get("expires_in"));*/
+  <pre id="output" style="white-space: pre-wrap; background: #f0f0f0; padding: 10px;"></pre>
+
+  <script>
+    const output = document.getElementById("output");
+
+    function show(msg) {
+      output.textContent += msg + "\n";
+    }
+
+    const hash = location.hash.substring(1);
+    show("🔍 location.hash: " + location.hash);
+
+    const params = new URLSearchParams(hash);
+    const token = params.get("access_token");
+    const expiresIn = parseInt(params.get("expires_in"));
+
+    show("🔑 token: " + token);
+    show("⏳ expiresIn: " + expiresIn);
+
+    if (token && expiresIn) {
+      const expiresAt = Date.now() + expiresIn * 1000;
+      localStorage.setItem("accessToken", token);
+      localStorage.setItem("accessTokenExpiresAt", expiresAt.toString());
+      show("✅ 保存成功。index.html に戻ります...");
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 2000);
+    } else {
+      show("❌ 認証に失敗しました。");
+    }
+  </script>
+</body>
+</html>
+
+/*<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>認証リダイレクト処理</title>
+</head>
+<body>
+  <p>🔁 認証トークン取得中...</p>
+  <script>
+    //const hash = new URLSearchParams(window.location.hash.substring(1));
+    //const token = hash.get("access_token");
+    //const expiresIn = parseInt(params.get("expires_in"));
     const hash = location.hash.substring(1);
 const params = new URLSearchParams(hash);
 const token = params.get("access_token");
@@ -27,3 +69,4 @@ const expiresIn = parseInt(params.get("expires_in"));
   </script>
 </body>
 </html>
+*/
