@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Google Drive プロジェクト作成</title>
+</head>
+<body>
+  <h2>📁 Google Drive プロジェクト作成</h2>
+
+  <input type="text" id="projectName" placeholder="プロジェクト名を入力" /><br><br>
+
+  <button onclick="listFolders()">📂 親フォルダ選択</button>
+  <div id="folderList">(フォルダ一覧がここに表示されます)</div><br>
+
+  <button onclick="redirectSignIn()">Googleでログインして作成</button>
+  <pre id="log">(ここにログが表示されます)</pre>
+
+  <script>
+    const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
+    const redirectUri = "https://chigaac.github.io/callback.html";
+    const scope = "https://www.googleapis.com/auth/drive.file";
+
+    let selectedParentId = null;
+    const log = msg => document.getElementById("log").textContent += `\n${msg}`;
+
+    function redirectSignIn() {
+      const projectName = document.getElementById("projectName").value.trim();
+      if (!projectName) return log("❌ プロジェクト名を入力してください");
+      if (!selectedParentId) return log("❌ 親フォルダを選択してください");
+
+      localStorage.setItem("pendingProjectName", projectName);
+      localStorage.setItem("pendingParentId", selectedParentId);
+
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "token",
+        scope: scope,
+        include_granted_scopes: "true"
+      });
+      location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    }
+
+    async function listFolders() {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        log("❌ トークンが未取得です（Googleログイン後に再度お試しください）");
+        return;
+      }
+
+      const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const result = await res.json();
+      const div = document.getElementById("folderList");
+      div.innerHTML = "";
+      result.files.forEach(f => {
+        const btn = document.createElement("button");
+        btn.textContent = f.name;
+        btn.onclick = () => {
+          selectedParentId = f.id;
+          log(`📌 親フォルダ選択: ${f.name}`);
+        };
+        div.appendChild(btn);
+        div.appendChild(document.createElement("br"));
+      });
+    }
+
+    window.onload = () => {
+      const token = localStorage.getItem("accessToken");
+      const projectName = localStorage.getItem("pendingProjectName");
+      const parentId = localStorage.getItem("pendingParentId");
+      if (token && projectName && parentId) {
+        createProject(projectName, parentId, token);
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("pendingProjectName");
+        localStorage.removeItem("pendingParentId");
+      }
+    };
+
+    async function createProject(name, parentId, token) {
+      log(`📁 '${name}' プロジェクトを作成中...`);
+
+      const res1 = await fetch("https://www.googleapis.com/drive/v3/files", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name,
+          mimeType: "application/vnd.google-apps.folder",
+          parents: [parentId]
+        })
+      });
+
+      const project = await res1.json();
+      const projectId = project.id;
+
+      async function createSub(name) {
+        const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name,
+            mimeType: "application/vnd.google-apps.folder",
+            parents: [projectId]
+          })
+        });
+        return (await res.json()).id;
+      }
+
+      const memoId = await createSub("メモ");
+      const embedId = await createSub("埋め込みファイル");
+
+      const map = {
+        projectName: name,
+        folders: { memo: memoId, embed: embedId },
+        files: []
+      };
+
+      const metadata = {
+        name: "map.json",
+        mimeType: "application/json",
+        parents: [projectId]
+      };
+
+      const form = new FormData();
+      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+
+      const upload = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: form
+      });
+
+      if (upload.ok) {
+        log("✅ プロジェクト作成完了");
+      } else {
+        log("❌ map.json アップロード失敗");
+      }
+    }
+  </script>
+</body>
+</html>
