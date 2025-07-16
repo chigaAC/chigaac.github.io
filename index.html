@@ -25,6 +25,8 @@ function storageClear() {
   localStorage.removeItem('pendingProjectName');
   localStorage.removeItem('pendingParentId');
   localStorage.removeItem('tokenExpiresAt');
+  //localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
+  
 }
 
     const token = localStorage.getItem("accessToken");
