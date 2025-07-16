@@ -76,6 +76,7 @@ setInterval('showClock()',1000);
       location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     }*/
 function redirectLogin() {
+  log(Date.now()+"*"+Date.now().toString());
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
