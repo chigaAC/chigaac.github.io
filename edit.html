@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Markdownエディタ</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    textarea { width: 100%; height: 200px; }
+    #preview { border: 1px solid #ccc; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h2>📝 Markdown編集</h2>
+  <button onclick="save()">💾 保存</button>
+  <textarea id="editor"></textarea>
+  <h3>📄 プレビュー</h3>
+  <div id="preview"></div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const fileId = params.get("id");
+    const token = localStorage.getItem("accessToken");
+
+    const editor = document.getElementById("editor");
+    const preview = document.getElementById("preview");
+
+    async function loadFile() {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const text = await res.text();
+      editor.value = text;
+      updatePreview();
+    }
+
+    function updatePreview() {
+      preview.innerHTML = marked.parse(editor.value);
+    }
+
+    editor.addEventListener("input", updatePreview);
+
+    async function save() {
+      const content = editor.value;
+      const metadata = new Blob([content], { type: "text/markdown" });
+
+      const form = new FormData();
+      form.append("file", metadata);
+
+      const res = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+          body: content
+        }
+      );
+
+      if (res.ok) {
+        alert("✅ 保存しました！");
+        // map.json の更新処理をここに追加予定
+      } else {
+        alert("❌ 保存に失敗しました");
+      }
+    }
+
+    loadFile();
+  </script>
+</body>
+</html>
