@@ -15,7 +15,7 @@
       //localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
         const expiresAt = Date.now() + expiresIn * 1000;
   localStorage.setItem("accessToken", token);
-  localStorage.setItem("accessTokenExpiresAt", expiresAt.toString());
+  localStorage.setItem("accessTokenExpiresAt", expiresAt);
       window.location.href = "index.html";
     } else {
       document.body.textContent = "❌ 認証に失敗しました。";
