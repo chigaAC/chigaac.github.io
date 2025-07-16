@@ -5,6 +5,7 @@
   <title>Google Drive プロジェクト作成</title>
 </head>
 <body>
+  <p id="TokenTimer">※ここに時計が表示されます。</p>
   <h2>📁 Google Drive プロジェクト作成</h2>
   <button onclick="redirectLogin()">Googleでログイン</button>
 
@@ -17,6 +18,23 @@
   <pre id="log">(ここにログが表示されます)</pre>
 
   <script>
+    function set2fig(num) {
+   // 桁数が1桁だったら先頭に0を加えて2桁に調整する
+   var ret;
+   if( num < 10 ) { ret = "0" + num; }
+   else { ret = num; }
+   return ret;
+}
+function showClock() {
+   var nowTime = new Date();
+   var nowHour = set2fig( nowTime.getHours() );
+   var nowMin  = set2fig( nowTime.getMinutes() );
+   var nowSec  = set2fig( nowTime.getSeconds() );
+   var msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
+   document.getElementById("TokenTimer").innerHTML = msg;
+}
+setInterval('showClock()',1000);
+
     const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
     const redirectUri = "https://chigaac.github.io/callback.html";
     const scope = "https://www.googleapis.com/auth/drive.file";
