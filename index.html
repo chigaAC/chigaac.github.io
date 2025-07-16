@@ -6,7 +6,8 @@
 </head>
 <body>
     <button onclick="storageClear()">クリア</button>
-  <p id="TokenTimer">※ここに時計が表示されます。</p>
+  <p id="TokenTimer">ここに時計が表示されます。</p>
+  <p id="loginStatus">ログイン状態</p>
   <h2>📁 Google Drive プロジェクト作成</h2>
   <button onclick="redirectLogin()">Googleでログイン</button>
 
@@ -25,12 +26,32 @@ function storageClear() {
   localStorage.removeItem('pendingProjectName');
   localStorage.removeItem('pendingParentId');
   localStorage.removeItem('tokenExpiresAt');
-  //localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
-  
+}
+function updateLoginStatus() {
+  const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
+  const now = Date.now();
+  const isLoggedIn = expiresAt > now;
+
+  const status = document.getElementById("loginStatus");
+  if (status) {
+    if (isLoggedIn) {
+      const remaining = Math.floor((expiresAt - now) / 1000);
+      status.textContent = `✅ ログイン中（残り ${remaining} 秒）`;
+    } else {
+      status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
+    }
+  }
+
+  // 自動削除してもOK（任意）
+  if (!isLoggedIn) {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("accessTokenExpiresAt");
+  }
 }
 
-    const token = localStorage.getItem("accessToken");
-const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
+// 初回と以降の更新
+updateLoginStatus();
+setInterval(updateLoginStatus, 1000);
     function set2fig(num) {
    // 桁数が1桁だったら先頭に0を加えて2桁に調整する
    var ret;
@@ -38,27 +59,14 @@ const expiresAt = parseInt(localStorage.getItem("tokenExpiresAt") || "0");
    else { ret = num; }
    return ret;
 }
-function showClock() {/*
-  if (token && parseInt(Date.now()) < expiresAt) {
-     var nowTime = new Date();
-     nowTime=parseInt(nowTime.toString())-expiresAt;*/
-   /*var nowHour = set2fig( expiresAt.getHours()-nowTime.getHours() );
-   var nowMin  = set2fig( expiresAt.getMinutes()-nowTime.getMinutes() );
-   var nowSec  = set2fig( expiresAt.getSeconds()-nowTime.getSeconds() );
-   var msg = "再ログインが必要になるまで後" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
-    /*
-   var msg = "再ログインが必要になるまで後" + nowTime+ " です。"+expiresAt;
-} else {
-  // トークン期限切れ → 再ログインが必要
-    var msg="ログインが必要です。"+expiresAt;
-}*/
-  /* var nowTime = new Date();
+function showClock() {
+   var nowTime = new Date();
    var nowHour = set2fig( nowTime.getHours() );
    var nowMin  = set2fig( nowTime.getMinutes() );
    var nowSec  = set2fig( nowTime.getSeconds() );
-   var msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
+   var msgc = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
   
-   document.getElementById("TokenTimer").innerHTML = localStorage.getItem("tokenExpiresAt");
+   document.getElementById("TokenTimer").innerHTML = msgc;
 }
 setInterval('showClock()',1000);
 
