@@ -11,7 +11,7 @@
     const token = hash.get("access_token");
     if (token) {
       localStorage.setItem("accessToken", token);
-      localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
+      //localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());
       window.location.href = "index.html";
     } else {
       document.body.textContent = "❌ 認証に失敗しました。";
