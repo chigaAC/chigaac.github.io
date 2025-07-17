@@ -34,16 +34,17 @@ function updateLoginStatus() {
    const nowHour = set2fig( now.getHours() );
    const nowMin  = set2fig( now.getMinutes() );
    const nowSec  = set2fig( now.getSeconds() );
-   //const msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
+   const msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
   const status = document.getElementById("loginStatus");
   if (status) {
     if (isLoggedIn) {
       const remaining = Math.floor((expiresAt - now) / 1000);
       //status.textContent = `✅ ログイン中（残り ${remaining} 秒）`;
-      status.textContent = `${nowHouer}:${nowMin}:${nowSec} ✅ ログイン中（残り ${remaining} 秒）`;
+      status.textContent = `${msg} ✅ ログイン中（残り ${remaining} 秒）`;
     } else {
+      status.textContent = `${msg} ⚠️ ログアウト状態（再ログインしてください）`;
       //status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
-      status.textContent = `${nowHouer}:${nowMin}:${nowSec} ⚠️ ログアウト状態（再ログインしてください）`;
+
     }
   }
 
@@ -56,14 +57,14 @@ function updateLoginStatus() {
 
 // 初回と以降の更新
 updateLoginStatus();
-setInterval(updateLoginStatus, 1000);/*
+setInterval(updateLoginStatus, 1000);
     function set2fig(num) {
    // 桁数が1桁だったら先頭に0を加えて2桁に調整する
    var ret;
    if( num < 10 ) { ret = "0" + num; }
    else { ret = num; }
    return ret;
-}
+}/*
 function showClock() {
    var nowTime = new Date();
    var nowHour = set2fig( nowTime.getHours() );
