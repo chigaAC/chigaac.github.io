@@ -6,7 +6,6 @@
 </head>
 <body>
     <button onclick="storageClear()">クリア</button>
-<!--  <p id="TokenTimer">ここに時計が表示されます。</p -->
   <p id="loginStatus">ログイン状態</p>
   <h2>📁 Google Drive プロジェクト作成</h2>
   <button onclick="redirectLogin()">Googleでログイン</button>
@@ -50,25 +49,7 @@ function updateLoginStatus() {
 // 初回と以降の更新
 updateLoginStatus();
 setInterval(updateLoginStatus, 1000);
-    
-    function set2fig(num) {
-   // 桁数が1桁だったら先頭に0を加えて2桁に調整する
-   var ret;
-   if( num < 10 ) { ret = "0" + num; }
-   else { ret = num; }
-   return ret;
-}
-    /*
-function showClock() {
-   const nowTime = new Date();
-   const nowHour = set2fig( nowTime.getHours() );
-   const nowMin  = set2fig( nowTime.getMinutes() );
-   const nowSec  = set2fig( nowTime.getSeconds() );
-   const msgc = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
-   return msg;
-   //document.getElementById("TokenTimer").innerHTML = msgc;
-}*/
-//setInterval('showClock()',1000);
+
 
     const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
     const redirectUri = "https://chigaac.github.io/callback.html";
@@ -76,24 +57,7 @@ function showClock() {
 
     let selectedParentId = null;
     const log = msg => document.getElementById("log").textContent += `\n${msg}`;
-/*
-    function redirectSignIn() {
-      const projectName = document.getElementById("projectName").value.trim();
-      if (!projectName) return log("❌ プロジェクト名を入力してください");
-      if (!selectedParentId) return log("❌ 親フォルダを選択してください");
 
-      localStorage.setItem("pendingProjectName", projectName);
-      localStorage.setItem("pendingParentId", selectedParentId);
-
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: "token",
-        scope: scope,
-        include_granted_scopes: "true"
-      });
-      location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-    }*/
 function redirectLogin() {
   log(Date.now()+"*"+Date.now().toString());
   const params = new URLSearchParams({
@@ -104,8 +68,6 @@ function redirectLogin() {
     include_granted_scopes: "true"
   });
   location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-  /*localStorage.setItem("accessToken", token);
-localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString());*/
 }
     function startProjectCreation() {
   const token = localStorage.getItem("accessToken");
@@ -147,19 +109,7 @@ localStorage.setItem("tokenExpiresAt", (Date.now() + expires_in * 1000).toString
         div.appendChild(document.createElement("br"));
       });
     }
-/*
-    window.onload = () => {
-      const token = localStorage.getItem("accessToken");
-      const projectName = localStorage.getItem("pendingProjectName");
-      const parentId = localStorage.getItem("pendingParentId");
-      if (token && projectName && parentId) {
-        createProject(projectName, parentId, token);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("pendingProjectName");
-        localStorage.removeItem("pendingParentId");
-      }
-    };
-*/
+
     async function createProject(name, parentId, token) {
       log(`📁 '${name}' プロジェクトを作成中...`);
 
