@@ -25,12 +25,30 @@ function storageClear() {
   localStorage.removeItem('pendingProjectName');
   localStorage.removeItem('pendingParentId');
 }
-    
 function updateLoginStatus() {
-  const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
+  const status = document.getElementById("loginStatus");
+  if (!status) return;
+
+  const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
   const now = Date.now();
   const isLoggedIn = expiresAt > now;
-  log(`[loginStatus] now=${now}, expiresAt=${expiresAt}, raw=${raw}, isLoggedIn=${isLoggedIn}`);
+
+  if (isLoggedIn) {
+    const remaining = Math.floor((expiresAt - now) / 1000);
+    status.textContent = `✅ ログイン中（残り ${remaining} 秒）`;
+  } else {
+    status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("accessTokenExpiresAt");
+  }
+}
+    /*
+function updateLoginStatus() {
+  //const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
+  const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
+  const now = Date.now();
+  const isLoggedIn = expiresAt > now;
+
   const status = document.getElementById("loginStatus");
   if (status) {
     if (isLoggedIn) {
@@ -46,7 +64,7 @@ function updateLoginStatus() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("accessTokenExpiresAt");
   }
-}
+}*/
 // 初回と以降の更新
 updateLoginStatus();
 setInterval(updateLoginStatus, 1000);
