@@ -133,34 +133,6 @@
   // メモ編集ページへ遷移
   window.open(`edit.html?id=${newFile.id}`, "_blank");
 }
-/*
-    async function createMemo() {
-      const map = await fetchMapJson();
-      const fileName = `新規メモ_${Date.now()}.txt`;
-
-      const metadata = {
-        name: fileName,
-        mimeType: "text/plain",
-        parents: [map.folders.memo]
-      };
-
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      form.append("file", new Blob([""], { type: "text/plain" }));
-
-      const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form
-      });
-
-      if (res.ok) {
-        const newFile = await res.json();
-        window.open(`edit.html?id=${newFile.id}`, "_blank");
-      } else {
-        alert("❌ メモ作成に失敗しました");
-      }
-    }*/
 
     displayFiles();
   </script>
