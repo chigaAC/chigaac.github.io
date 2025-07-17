@@ -66,6 +66,28 @@ function redirectLogin() {
   });
   location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
+async function startProjectCreation() {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return log("❌ トークンが未取得です");
+
+  const projectName = document.getElementById("projectName").value.trim();
+  if (!projectName) return log("❌ プロジェクト名を入力してください");
+
+  let parentId;
+  if (selectedParentId) {
+    parentId = selectedParentId;
+    log(`📂 選択されたフォルダを親に設定します`);
+  } else {
+    parentId = await ensureNyuunFolder(token);
+    log(`📁 'nyu--n' フォルダを親に設定します`);
+  }
+
+  localStorage.setItem("pendingProjectName", projectName);
+  localStorage.setItem("pendingParentId", parentId);
+
+  createProject(projectName, parentId, token);
+}
+    /*
     function startProjectCreation() {
   const token = localStorage.getItem("accessToken");
   if (!token) return log("❌ トークンが未取得です（Googleログイン後に再度お試しください）");
@@ -80,6 +102,34 @@ function redirectLogin() {
 
   // 作成実行は token 取得済みなので createProject を直接呼べる
   createProject(projectName, selectedParentId, token);
+}*/
+    async function ensureNyuunFolder(token) {
+  const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+  if (data.files.length > 0) {
+    log(`📁 既存の 'nyu--n' フォルダを使用`);
+    return data.files[0].id;
+  }
+
+  const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: "nyu--n",
+      mimeType: "application/vnd.google-apps.folder"
+    })
+  });
+
+  const created = await createRes.json();
+  log(`✅ 'nyu--n' フォルダを新規作成しました`);
+  return created.id;
 }
     async function listFolders() {
       const token = localStorage.getItem("accessToken");
@@ -106,7 +156,70 @@ function redirectLogin() {
         div.appendChild(document.createElement("br"));
       });
     }
+    async function createProject(name, parentId, token) {
+  log(`📁 '${name}' プロジェクトを作成中...`);
 
+  const projectId = await createFolder(name, parentId, token);
+
+  const memoId = await createFolder("メモ", projectId, token);
+  const embedId = await createFolder("埋め込みファイル", projectId, token);
+  const dataId = await createFolder("アップロードデータ", projectId, token); // ← 新規追加
+
+  const map = {
+    projectName: name,
+    folders: {
+      memo: memoId,
+      embed: embedId,
+      data: dataId
+    },
+    files: []
+  };
+
+  const metadata = {
+    name: "map.json",
+    mimeType: "application/json",
+    parents: [projectId]
+  };
+
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+
+  const upload = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: form
+  });
+
+  if (upload.ok) {
+    const mapInfo = await upload.json();
+    localStorage.setItem("accessToken", token);
+    localStorage.setItem("mapFileId", mapInfo.id);
+    window.location.href = "dashboard.html";
+  } else {
+    log("❌ map.json アップロード失敗");
+  }
+}
+
+async function createFolder(name, parentId, token) {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentId]
+    })
+  });
+  const json = await res.json();
+  return json.id;
+}
+/*
     async function createProject(name, parentId, token) {
       log(`📁 '${name}' プロジェクトを作成中...`);
 
@@ -178,7 +291,7 @@ function redirectLogin() {
       } else {
         log("❌ map.json アップロード失敗");
       }
-    }
+    }*/
   </script>
 </body>
 </html>
