@@ -34,8 +34,9 @@ function updateLoginStatus() {
   const isLoggedIn = expiresAt > now;
 
   if (isLoggedIn) {
-    const remaining = Math.floor((expiresAt - now) / 1000);
-    status.textContent = `✅ ログイン中（残り ${remaining} 秒）`;
+    //const remaining = Math.floor((expiresAt - now) / 1000);
+    const remaining = Math.floor((expiresAt - now) / 60000);
+    status.textContent = `✅ ログイン中（残り約 ${remaining} 分）`;
   } else {
     status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
     localStorage.removeItem("accessToken");
@@ -67,7 +68,7 @@ function updateLoginStatus() {
 }*/
 // 初回と以降の更新
 updateLoginStatus();
-setInterval(updateLoginStatus, 1000);
+setInterval(updateLoginStatus, 60000);
 
 
     const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
