@@ -28,22 +28,22 @@ function storageClear() {
 }
 function updateLoginStatus() {
   const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
+  const nowTime = new Date();
   const now = Date.now();
   const isLoggedIn = expiresAt > now;
-  /*
-   const nowHour = set2fig( now.getHours() );
-   const nowMin  = set2fig( now.getMinutes() );
-   const nowSec  = set2fig( now.getSeconds() );
-   const msg = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";*/
+   const nowHour = set2fig( nowTime.getHours() );
+   const nowMin  = set2fig( nowTime.getMinutes() );
+   const nowSec  = set2fig( nowTime.getSeconds() );
+   const msg = nowHour + ":" + nowMin + ":" + nowSec;
   const status = document.getElementById("loginStatus");
   if (status) {
     if (isLoggedIn) {
       const remaining = Math.floor((expiresAt - now) / 1000);
-      status.textContent = `✅ ログイン中（残り ${remaining} 秒）`;
-      //status.textContent = `${msg} ✅ ログイン中（残り ${remaining} 秒）`;
+      //status.textContent = `✅ ログイン中（残り ${remaining} 秒）`;
+      status.textContent = `${msg} ✅ ログイン中（残り ${remaining} 秒）`;
     } else {
-      //status.textContent = `${msg} ⚠️ ログアウト状態（再ログインしてください）`;
-      status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
+      status.textContent = `${msg} ⚠️ ログアウト状態（再ログインしてください）`;
+      //status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
 
     }
   }
