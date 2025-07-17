@@ -28,13 +28,9 @@ function storageClear() {
 }
 function updateLoginStatus() {
   const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
-  const nowTime = new Date();
   const now = Date.now();
   const isLoggedIn = expiresAt > now;
-   const nowHour = set2fig( nowTime.getHours() );
-   const nowMin  = set2fig( nowTime.getMinutes() );
-   const nowSec  = set2fig( nowTime.getSeconds() );
-   const msg = nowHour + ":" + nowMin + ":" + nowSec;
+  const msg=showClock();
   const status = document.getElementById("loginStatus");
   if (status) {
     if (isLoggedIn) {
@@ -65,17 +61,17 @@ setInterval(updateLoginStatus, 1000);
    else { ret = num; }
    return ret;
 }
-    /*
+    
 function showClock() {
-   var nowTime = new Date();
-   var nowHour = set2fig( nowTime.getHours() );
-   var nowMin  = set2fig( nowTime.getMinutes() );
-   var nowSec  = set2fig( nowTime.getSeconds() );
-   var msgc = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
-  
-   document.getElementById("TokenTimer").innerHTML = msgc;
+   const nowTime = new Date();
+   const nowHour = set2fig( nowTime.getHours() );
+   const nowMin  = set2fig( nowTime.getMinutes() );
+   const nowSec  = set2fig( nowTime.getSeconds() );
+   const msgc = "現在時刻は、" + nowHour + ":" + nowMin + ":" + nowSec + " です。";
+   return msg;
+   //document.getElementById("TokenTimer").innerHTML = msgc;
 }
-setInterval('showClock()',1000);*/
+//setInterval('showClock()',1000);
 
     const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
     const redirectUri = "https://chigaac.github.io/callback.html";
