@@ -29,7 +29,7 @@ function updateLoginStatus() {
   const expiresAt = parseInt(localStorage.getItem("accessTokenExpiresAt") || "0");
   const now = Date.now();
   const isLoggedIn = expiresAt > now;
-
+  log(`[loginStatus] now=${now}, expiresAt=${expiresAt}, raw=${raw}, isLoggedIn=${isLoggedIn}`);
   const status = document.getElementById("loginStatus");
   if (status) {
     if (isLoggedIn) {
