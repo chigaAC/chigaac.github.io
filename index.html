@@ -6,7 +6,7 @@
 </head>
 <body>
     <button onclick="storageClear()">クリア</button>
-  <p id="TokenTimer">ここに時計が表示されます。</p>
+<!--  <p id="TokenTimer">ここに時計が表示されます。</p -->
   <p id="loginStatus">ログイン状態</p>
   <h2>📁 Google Drive プロジェクト作成</h2>
   <button onclick="redirectLogin()">Googleでログイン</button>
@@ -56,7 +56,7 @@ function updateLoginStatus() {
 
 // 初回と以降の更新
 updateLoginStatus();
-setInterval(updateLoginStatus, 1000);
+setInterval(updateLoginStatus, 1000);/*
     function set2fig(num) {
    // 桁数が1桁だったら先頭に0を加えて2桁に調整する
    var ret;
@@ -73,7 +73,7 @@ function showClock() {
   
    document.getElementById("TokenTimer").innerHTML = msgc;
 }
-setInterval('showClock()',1000);
+setInterval('showClock()',1000);*/
 
     const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
     const redirectUri = "https://chigaac.github.io/callback.html";
