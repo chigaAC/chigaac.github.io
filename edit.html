@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h2>📝 Markdown編集</h2>
+  <h2 id="projectTitle">📝 Markdown編集</h2>
   <button onclick="save()">💾 保存</button>
   <textarea id="editor"></textarea>
   <h3>📄 プレビュー</h3>
@@ -18,33 +18,78 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    const fileId = params.get("id");
+    const fileId = params.get("id");       // 編集対象のメモファイルID
+    const mapFileId = params.get("project") || localStorage.getItem("mapFileId");
     const token = localStorage.getItem("accessToken");
 
     const editor = document.getElementById("editor");
     const preview = document.getElementById("preview");
+    const projectTitle = document.getElementById("projectTitle");
 
+    // --- map.jsonを取得 ---
+    async function fetchMapJson() {
+      if (!mapFileId) return null;
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    }
+
+    // --- 親フォルダ名を取得 ---
+    async function fetchProjectName() {
+      if (!mapFileId) return;
+      const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?fields=parents`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const fileData = await fileRes.json();
+      const parentId = fileData.parents && fileData.parents[0];
+      if (parentId) {
+        const parentRes = await fetch(`https://www.googleapis.com/drive/v3/files/${parentId}?fields=name`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const parentData = await parentRes.json();
+        return parentData.name;
+      }
+      return "(不明なプロジェクト)";
+    }
+
+    // --- プロジェクト名を表示 ---
+    async function updateProjectTitle() {
+      const projectName = await fetchProjectName();
+      projectTitle.textContent = `📝 [${projectName}] Markdown編集`;
+    }
+
+    // --- ファイルの読み込み ---
     async function loadFile() {
+      if (!fileId) {
+        alert("❌ メモIDが指定されていません");
+        return;
+      }
       const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) {
+        alert("❌ メモの読み込みに失敗しました");
+        return;
+      }
       const text = await res.text();
       editor.value = text;
       updatePreview();
     }
 
+    // --- プレビュー更新 ---
     function updatePreview() {
       preview.innerHTML = marked.parse(editor.value);
     }
-
     editor.addEventListener("input", updatePreview);
 
+    // --- 保存処理 ---
     async function save() {
+      if (!fileId) {
+        alert("❌ メモIDが不明です");
+        return;
+      }
       const content = editor.value;
-      const metadata = new Blob([content], { type: "text/markdown" });
-
-      const form = new FormData();
-      form.append("file", metadata);
 
       const res = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
@@ -57,12 +102,43 @@
 
       if (res.ok) {
         alert("✅ 保存しました！");
-        // map.json の更新処理をここに追加予定
+        await updateMapJsonTimestamp();
       } else {
         alert("❌ 保存に失敗しました");
       }
     }
 
+    // --- map.jsonの更新（編集日時を追記） ---
+    async function updateMapJsonTimestamp() {
+      if (!mapFileId) return;
+      const map = await fetchMapJson();
+      if (!map || !map.files) return;
+
+      const target = map.files.find(f => f.id === fileId);
+      if (target) {
+        target.updated = new Date().toISOString();
+      }
+
+      const form = new FormData();
+      form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
+      form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+
+      const updateRes = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${mapFileId}?uploadType=multipart`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form
+        }
+      );
+
+      if (!updateRes.ok) {
+        console.warn("⚠️ map.json の更新に失敗しました");
+      }
+    }
+
+    // --- 初期ロード ---
+    updateProjectTitle();  // プロジェクト名表示
     loadFile();
   </script>
 </body>
