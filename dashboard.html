@@ -12,8 +12,8 @@
 <body>
   <div id="header">
     <button onclick="createMemo()">📝 メモ新規作成</button>
-    <button onclick="triggerUpload()">📤 ファイルをアップロード</button>
-    <input type="file" id="uploadInput" multiple />
+  <!--  <button onclick="triggerUpload()">📤 ファイルをアップロード</button>
+    <input type="file" id="uploadInput" multiple /> -->
   </div>
   
 <div id="dropZone" style="border:2px dashed #888; padding:2em; text-align:center;">
@@ -142,6 +142,7 @@
   // メモ編集ページへ遷移
   window.open(`edit.html?id=${newFile.id}`, "_blank");
 }
+    /*
 function triggerUpload() {
   document.getElementById("uploadInput").click();
 }
@@ -206,7 +207,7 @@ async function uploadFileToFolder(file, parentId, token) {
   if (!res.ok) {
     console.error("アップロード失敗", await res.text());
   }
-}
+}*/
     //ファイルアップロード(ドラッグ&ドロップ)
 let pendingFiles = []; // ドロップ or 選択されたファイルを保持
 
