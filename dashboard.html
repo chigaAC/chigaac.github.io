@@ -289,20 +289,35 @@ async function uploadFileToFolder(file, parentId, token) {
 }
     //プロジェクト選択
     async function listProjects() {
-  const res = await fetch("https://www.googleapis.com/drive/v3/files?q=name='map.json' and trashed=false", {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  // map.json をすべて検索（nyu--n内のmap.jsonを対象）
+  const res = await fetch(
+    "https://www.googleapis.com/drive/v3/files?q=name='map.json' and trashed=false&fields=files(id,name,parents)",
+    {
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
   const data = await res.json();
 
   const select = document.getElementById("projectSelect");
   select.innerHTML = "<option value=''>-- プロジェクトを選択 --</option>";
 
-  data.files.forEach(f => {
+  for (const f of data.files) {
+    // 親フォルダ名を取得
+    const parentId = f.parents && f.parents[0];
+    let parentName = "(不明)";
+    if (parentId) {
+      const parentRes = await fetch(`https://www.googleapis.com/drive/v3/files/${parentId}?fields=name`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const parentData = await parentRes.json();
+      parentName = parentData.name;
+    }
+
     const option = document.createElement("option");
     option.value = f.id;
-    option.textContent = f.name + " (" + f.id + ")";
+    option.textContent = `${parentName} (map.json ID: ${f.id})`;
     select.appendChild(option);
-  });
+  }
 }
 
 function selectProject(mapId) {
