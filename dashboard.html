@@ -13,9 +13,15 @@
   <div id="header">
     <button onclick="createMemo()">📝 メモ新規作成</button>
     <button onclick="triggerUpload()">📤 ファイルをアップロード</button>
-<input type="file" id="uploadInput" multiple accept="image/*,video/*" style="display:none;" />
+    <input type="file" id="uploadInput" multiple />
   </div>
-
+  
+<div id="dropZone" style="border:2px dashed #888; padding:2em; text-align:center;">
+  ここにファイルをドラッグ＆ドロップ
+</div>
+<ul id="filePreview"></ul>
+<button onclick="uploadAll()">完了してアップロード</button>
+  
   <h3>📄 ファイル一覧</h3>
   <div id="fileList">(読み込み中...)</div>
 
@@ -199,6 +205,88 @@ async function uploadFileToFolder(file, parentId, token) {
   if (!res.ok) {
     console.error("アップロード失敗", await res.text());
   }
+}
+    //ファイルアップロード(ドラッグ&ドロップ)
+    let pendingFiles = []; // ドロップされたファイルを保持
+
+const dropZone = document.getElementById("dropZone");
+const filePreview = document.getElementById("filePreview");
+
+dropZone.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropZone.style.background = "#eef";
+});
+dropZone.addEventListener("dragleave", () => dropZone.style.background = "");
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.style.background = "";
+  const files = Array.from(e.dataTransfer.files);
+  pendingFiles.push(...files);
+  refreshPreview();
+});
+
+function refreshPreview() {
+  filePreview.innerHTML = "";
+  pendingFiles.forEach((file, index) => {
+    const li = document.createElement("li");
+    li.textContent = `${index + 1}. ${file.name}`;
+    filePreview.appendChild(li);
+  });
+}
+
+async function uploadAll() {
+  if (pendingFiles.length === 0) {
+    alert("アップロードするファイルがありません");
+    return;
+  }
+
+  const token = localStorage.getItem("accessToken");
+  const map = await fetchMapJson();
+  const uploadRoot = map.folders.data;
+
+  // 日時フォルダ作成
+  const now = new Date();
+  const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
+  const folderId = await createFolder(folderName, uploadRoot, token);
+
+  for (const file of pendingFiles) {
+    await uploadFileToFolder(file, folderId, token);
+  }
+
+  alert("✅ アップロード完了！");
+  pendingFiles = [];
+  refreshPreview();
+}
+
+async function createFolder(name, parentId, token) {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentId]
+    })
+  });
+  return (await res.json()).id;
+}
+
+async function uploadFileToFolder(file, parentId, token) {
+  const metadata = {
+    name: file.name,
+    parents: [parentId]
+  };
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", file);
+  await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
 }
     displayFiles();
   </script>
