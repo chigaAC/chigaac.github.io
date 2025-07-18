@@ -17,8 +17,9 @@
   </div>
   
 <div id="dropZone" style="border:2px dashed #888; padding:2em; text-align:center;">
-  ここにファイルをドラッグ＆ドロップ
+  ここにファイルをドラッグ＆ドロップ（または下のボタンで選択）
 </div>
+<input type="file" id="filePicker" multiple style="margin-top:10px;" />
 <ul id="filePreview"></ul>
 <button onclick="uploadAll()">完了してアップロード</button>
   
@@ -207,16 +208,20 @@ async function uploadFileToFolder(file, parentId, token) {
   }
 }
     //ファイルアップロード(ドラッグ&ドロップ)
-    let pendingFiles = []; // ドロップされたファイルを保持
+let pendingFiles = []; // ドロップ or 選択されたファイルを保持
 
 const dropZone = document.getElementById("dropZone");
+const filePicker = document.getElementById("filePicker");
 const filePreview = document.getElementById("filePreview");
 
+// ドラッグオーバー時のスタイル変更
 dropZone.addEventListener("dragover", e => {
   e.preventDefault();
   dropZone.style.background = "#eef";
 });
 dropZone.addEventListener("dragleave", () => dropZone.style.background = "");
+
+// ドロップ処理
 dropZone.addEventListener("drop", e => {
   e.preventDefault();
   dropZone.style.background = "";
@@ -225,15 +230,35 @@ dropZone.addEventListener("drop", e => {
   refreshPreview();
 });
 
+// ファイルピッカーから選択
+filePicker.addEventListener("change", e => {
+  const files = Array.from(e.target.files);
+  pendingFiles.push(...files);
+  refreshPreview();
+  filePicker.value = ""; // 再選択用にクリア
+});
+
+// プレビュー更新
 function refreshPreview() {
   filePreview.innerHTML = "";
   pendingFiles.forEach((file, index) => {
     const li = document.createElement("li");
-    li.textContent = `${index + 1}. ${file.name}`;
+    li.textContent = `${file.name} (${Math.round(file.size / 1024)} KB) `;
+
+    // 削除ボタン
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "削除";
+    delBtn.onclick = () => {
+      pendingFiles.splice(index, 1);
+      refreshPreview();
+    };
+
+    li.appendChild(delBtn);
     filePreview.appendChild(li);
   });
 }
 
+// アップロード処理
 async function uploadAll() {
   if (pendingFiles.length === 0) {
     alert("アップロードするファイルがありません");
