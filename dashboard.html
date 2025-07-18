@@ -12,6 +12,9 @@
 <body>
   <div id="header">
     <button onclick="createMemo()">📝 メモ新規作成</button>
+    <select id="projectSelect" onchange="selectProject(this.value)">
+  <option value="">-- プロジェクトを選択 --</option>
+</select>
   </div>
   
 <div id="dropZone" style="border:2px dashed #888; padding:2em; text-align:center;">
@@ -284,6 +287,32 @@ async function uploadFileToFolder(file, parentId, token) {
     body: form
   });
 }
+    //プロジェクト選択
+    async function listProjects() {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files?q=name='map.json' and trashed=false", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await res.json();
+
+  const select = document.getElementById("projectSelect");
+  select.innerHTML = "<option value=''>-- プロジェクトを選択 --</option>";
+
+  data.files.forEach(f => {
+    const option = document.createElement("option");
+    option.value = f.id;
+    option.textContent = f.name + " (" + f.id + ")";
+    select.appendChild(option);
+  });
+}
+
+function selectProject(mapId) {
+  if (!mapId) return;
+  localStorage.setItem("mapFileId", mapId);
+  displayFiles(); // 選択したプロジェクトの内容を再表示
+}
+
+// ページロード時に一覧取得
+listProjects();
     displayFiles();
   </script>
 </body>
