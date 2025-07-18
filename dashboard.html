@@ -244,8 +244,11 @@ function refreshPreview() {
   filePreview.innerHTML = "";
   pendingFiles.forEach((file, index) => {
     const li = document.createElement("li");
-    li.textContent = `${file.name} (${Math.round(file.size / 1024)} KB) `;
 
+    // ファイル名
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `${file.name} (${Math.round(file.size / 1024)} KB) `;
+    li.appendChild(nameSpan);
     // 削除ボタン
     const delBtn = document.createElement("button");
     delBtn.textContent = "削除";
@@ -253,8 +256,42 @@ function refreshPreview() {
       pendingFiles.splice(index, 1);
       refreshPreview();
     };
-
     li.appendChild(delBtn);
+    // プレビューエリア
+    const preview = document.createElement("span");
+    preview.style.margin = "0 10px";
+    preview.style.display = "inline-block";
+
+    if (file.type.startsWith("image/")) {
+      // 画像プレビュー
+      const img = document.createElement("img");
+      img.style.maxWidth = "80px";
+      img.style.maxHeight = "60px";
+      img.style.objectFit = "cover";
+      const reader = new FileReader();
+      reader.onload = e => (img.src = e.target.result);
+      reader.readAsDataURL(file);
+      preview.appendChild(img);
+    } else if (file.type.startsWith("video/")) {
+      // 動画プレビュー（サムネイルなし、アイコンのみ）
+      preview.textContent = "🎞️";
+    } else if (file.type.startsWith("audio/")) {
+      // 音声プレビュー（アイコン）
+      preview.textContent = "🎵";
+    } else if (file.type.startsWith("text/") || file.type === "application/json") {
+      // テキストファイルの冒頭をプレビュー
+      const reader = new FileReader();
+      reader.onload = e => {
+        const content = e.target.result.slice(0, 20).replace(/\n/g, " ");
+        preview.textContent = `📝 ${content}${content.length >= 20 ? "..." : ""}`;
+      };
+      reader.readAsText(file);
+    } else {
+      // その他ファイル（PDFやZIPなど）
+      preview.textContent = "📄";
+    }
+    li.appendChild(preview);
+
     filePreview.appendChild(li);
   });
 }
