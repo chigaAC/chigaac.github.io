@@ -137,6 +137,67 @@
     }
 
     // --- メモ作成 ---
+async function createMemo() {
+  if (!mapFileId) {
+    alert("❌ プロジェクトを選択してください。");
+    return;
+  }
+  const map = await fetchMapJson();
+  const fileName = `新規メモ_${Date.now()}.md`;
+  const metadata = {
+    name: fileName,
+    mimeType: "text/markdown",
+    parents: [map.folders.memo]
+  };
+
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", new Blob([""], { type: "text/markdown" }));
+
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+
+  if (!res.ok) {
+    alert("❌ メモ作成に失敗しました");
+    return;
+  }
+
+  const newFile = await res.json();
+
+  // map.json に新しいメモを追記
+  map.files.push({
+    id: newFile.id,
+    name: fileName,
+    path: ["memo"],
+    as: "memo",
+    created: new Date().toISOString()
+  });
+
+  // map.json を更新
+  const form2 = new FormData();
+  form2.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
+  form2.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+
+  const updateRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${mapFileId}?uploadType=multipart`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form2
+  });
+
+  if (!updateRes.ok) {
+    alert("⚠️ メモは作成されましたが、map.json の更新に失敗しました");
+  }
+
+  // ---- 追加：edit.html に移動 ----
+  // クエリパラメータとして、メモIDとプロジェクトIDを付与
+  window.open(`edit.html?project=${mapFileId}&id=${newFile.id}`, "_blank");
+
+  displayFiles();
+}
+    /*
     async function createMemo() {
       if (!mapFileId) {
         alert("❌ プロジェクトを選択してください。");
@@ -190,7 +251,7 @@
       }
 
       displayFiles();
-    }
+    }*/
 
     // --- ファイルアップロード ---
     let pendingFiles = [];
