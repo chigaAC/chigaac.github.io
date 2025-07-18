@@ -12,6 +12,8 @@
 <body>
   <div id="header">
     <button onclick="createMemo()">📝 メモ新規作成</button>
+    <button onclick="triggerUpload()">📤 ファイルをアップロード</button>
+<input type="file" id="uploadInput" multiple accept="image/*,video/*" style="display:none;" />
   </div>
 
   <h3>📄 ファイル一覧</h3>
@@ -133,7 +135,71 @@
   // メモ編集ページへ遷移
   window.open(`edit.html?id=${newFile.id}`, "_blank");
 }
+function triggerUpload() {
+  document.getElementById("uploadInput").click();
+}
 
+document.getElementById("uploadInput").addEventListener("change", async (e) => {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+
+  const token = localStorage.getItem("accessToken");
+  const map = await fetchMapJson();
+  const uploadRoot = map.folders.data;
+
+  // フォルダ名を "YYYYMMDD_HHmmss" 形式で
+  const now = new Date();
+  const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
+
+  const folderId = await createFolder(folderName, uploadRoot, token);
+
+  for (const file of files) {
+    await uploadFileToFolder(file, folderId, token);
+  }
+
+  alert("✅ アップロード完了！");
+  e.target.value = ""; // 選択クリア
+});
+
+async function createFolder(name, parentId, token) {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentId]
+    })
+  });
+  const json = await res.json();
+  return json.id;
+}
+
+async function uploadFileToFolder(file, parentId, token) {
+  const metadata = {
+    name: file.name,
+    parents: [parentId]
+  };
+
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", file);
+
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: form
+  });
+
+  if (!res.ok) {
+    console.error("アップロード失敗", await res.text());
+  }
+}
     displayFiles();
   </script>
 </body>
