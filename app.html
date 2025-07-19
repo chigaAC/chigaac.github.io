@@ -154,18 +154,6 @@ async function startProjectCreation() {
 
   createProject(projectName, parentId, token);
 }
-    /*
-    async function startProjectCreation() {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return log("❌ トークンが未取得です");
-      const projectName = document.getElementById("projectName").value.trim();
-      if (!projectName) return log("❌ プロジェクト名を入力してください");
-
-      let parentId = selectedParentId || await ensureNyuunFolder(token);
-      localStorage.setItem("pendingProjectName", projectName);
-      localStorage.setItem("pendingParentId", parentId);
-      createProject(projectName, parentId, token);
-    }*/
 
     async function listFolders() {
       const token = localStorage.getItem("accessToken");
@@ -219,30 +207,6 @@ async function createProject(name, parentId, token) {
     log("❌ map.json アップロード失敗");
   }
 }
-    /*
-    async function createProject(name, parentId, token) {
-      const projectId = await createFolder(name, parentId, token);
-      const memoId = await createFolder("メモ", projectId, token);
-      const embedId = await createFolder("埋め込みファイル", projectId, token);
-      const dataId = await createFolder("アップロードデータ", projectId, token);
-
-      const map = { projectName: name, folders: { memo: memoId, embed: embedId, data: dataId }, files: [] };
-      const metadata = { name: "map.json", mimeType: "application/json", parents: [projectId] };
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
-
-      const upload = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
-      });
-
-      if (upload.ok) {
-        const mapInfo = await upload.json();
-        localStorage.setItem("mapFileId", mapInfo.id);
-        mapFileId = mapInfo.id;
-        alert("✅ プロジェクト作成完了");
-      } else log("❌ map.json アップロード失敗");
-    }*/
       
     async function createFolder(name, parentId, token) {
       const res = await fetch("https://www.googleapis.com/drive/v3/files", {
@@ -330,14 +294,6 @@ embedFiles.forEach(f => {
   };
   listEl.appendChild(a);
 });
-        /*
-        embedFiles.forEach(f => {
-          const a = document.createElement("a");
-          a.href = `https://drive.google.com/file/d/${f.id}/view`;
-          a.textContent = f.name;
-          a.target = "_blank";
-          listEl.appendChild(a);
-        });*/
       } catch (e) { listEl.textContent = "❌ エラー"; console.error(e); }
     }
 async function showPreview(file) {
