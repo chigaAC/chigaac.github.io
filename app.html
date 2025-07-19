@@ -23,13 +23,14 @@
   <button onclick="showPage('index')">Index</button>
   <button onclick="showPage('dashboard')">Dashboard</button>
   <button onclick="showPage('edit')">Edit</button>
+  <button onclick="storageClear()">クリア</button>
   <button id="loginButton" onclick="redirectLogin()">Googleでログイン</button>
 </div>
 
   <!-- Index Page -->
   <div id="page-index" class="page active">
     <h2>📁 Google Drive プロジェクト作成</h2>
-    <button onclick="storageClear()">クリア</button>
+    
     <input type="text" id="projectName" placeholder="プロジェクト名を入力" /><br><br>
     <button onclick="listFolders()">📂 親フォルダ選択</button>
     <div id="folderList">(フォルダ一覧がここに表示されます)</div><br>
@@ -82,43 +83,7 @@
       alert("LocalStorageをクリアしました");
     }
     function updateLoginStatus() {
-      const status = /*document.getElementById("loginStatus");
-      const loginBtn = */document.getElementById("loginButton");
-      if (!status) return;
-      const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
-      const now = Date.now();
-      const isLoggedIn = expiresAt > now;
-      status.textContent = isLoggedIn
-        ? `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`
-        : "⚠️ ログアウト状態（再ログインしてください）";
-      /*loginBtn.textContent = isLoggedIn
-        ? `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`
-        : "⚠️ ログアウト状態（再ログインしてください）";*/
-      if (!isLoggedIn) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("accessTokenExpiresAt");
-      }
-    }/*
-function updateLoginStatus() {
-  const status = document.getElementById("loginStatus");
-  const loginBtn = document.getElementById("loginButton");
-  if (!status || !loginBtn) return;
-
-  const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
-  const now = Date.now();
-  const isLoggedIn = expiresAt > now;
-
-  if (isLoggedIn) {
-    status.textContent = `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`;
-    loginBtn.textContent = "Googleで再ログイン";
-  } else {
-    status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
-    loginBtn.textContent = "Googleでログイン";
-  }
-}*/
-    /*
-    function updateLoginStatus() {
-      const status = document.getElementById("loginStatus");
+      const status = document.getElementById("loginButton");
       if (!status) return;
       const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
       const now = Date.now();
@@ -130,7 +95,7 @@ function updateLoginStatus() {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("accessTokenExpiresAt");
       }
-    }*/
+    }
     updateLoginStatus();
     setInterval(updateLoginStatus, 60000);
 
