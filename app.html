@@ -51,6 +51,10 @@
     <button onclick="uploadAll()">完了してアップロード</button>
     <h3>📄 ファイル一覧</h3>
     <div id="fileList">(読み込み中...)</div>
+<div id="filePreviewModal" style="display:none; border:1px solid #888; padding:10px; margin-top:20px;">
+  <button onclick="closePreview()" style="float:right;">×</button>
+  <div id="previewContent">(プレビューがここに表示されます)</div>
+</div>
   </div>
 
   <!-- Edit Page -->
@@ -316,16 +320,84 @@ async function createProject(name, parentId, token) {
           listEl.appendChild(a);
         });
         listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
+embedFiles.forEach(f => {
+  const a = document.createElement("a");
+  a.href = "#";
+  a.textContent = f.name;
+  a.onclick = (e) => {
+    e.preventDefault();
+    showPreview(f);
+  };
+  listEl.appendChild(a);
+});
+        /*
         embedFiles.forEach(f => {
           const a = document.createElement("a");
           a.href = `https://drive.google.com/file/d/${f.id}/view`;
           a.textContent = f.name;
           a.target = "_blank";
           listEl.appendChild(a);
-        });
+        });*/
       } catch (e) { listEl.textContent = "❌ エラー"; console.error(e); }
     }
+async function showPreview(file) {
+  const modal = document.getElementById("filePreviewModal");
+  const content = document.getElementById("previewContent");
+  content.innerHTML = "読み込み中...";
 
+  // ファイル情報取得
+  const fileMetaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const fileMeta = await fileMetaRes.json();
+  const mimeType = fileMeta.mimeType || "application/octet-stream";
+  const fileUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`;
+
+  let html = "";
+
+  if (mimeType.startsWith("image/")) {
+    html = `<img src="${fileUrl}" style="max-width:100%; max-height:300px;">`;
+
+  } else if (mimeType.startsWith("audio/")) {
+    html = `<audio controls src="${fileUrl}" style="width:100%;"></audio>`;
+
+  } else if (mimeType.startsWith("video/")) {
+    html = `<video controls src="${fileUrl}" style="width:100%; max-height:300px;"></video>`;
+
+  } else if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType.includes("markdown")) {
+    // テキストファイルの中身を取得
+    const textRes = await fetch(fileUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const textContent = await textRes.text();
+    // 一部だけ表示（長文対策）
+    const previewText = textContent.length > 2000 ? textContent.slice(0, 2000) + "\n\n...（続きは省略）" : textContent;
+    html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
+
+  } else {
+    html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
+  }
+
+  content.innerHTML = html;
+  modal.style.display = "block";
+}
+
+// HTMLエスケープ（テキストプレビューでHTMLタグを無効化するため）
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, function (m) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[m];
+  });
+}
+
+function closePreview() {
+  document.getElementById("filePreviewModal").style.display = "none";
+}
     async function createMemo() {
       if (!mapFileId) { alert("❌ プロジェクトを選択してください。"); return; }
       const map = await fetchMapJson();
