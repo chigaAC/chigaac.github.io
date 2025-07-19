@@ -23,8 +23,9 @@
   <button onclick="showPage('index')">Index</button>
   <button onclick="showPage('dashboard')">Dashboard</button>
   <button onclick="showPage('edit')">Edit</button>
-  <p id="loginStatus" style="margin:0 1em;"></p>
-  <button onclick="redirectLogin()">Googleでログイン</button>
+ <!-- <p id="loginStatus" style="margin:0 1em;"></p>
+  <button onclick="redirectLogin()">Googleでログイン</button> -->
+  <button id="loginButton" onclick="redirectLogin()">Googleでログイン</button>
 </div>
 
   <!-- Index Page -->
@@ -82,7 +83,24 @@
       localStorage.clear();
       alert("LocalStorageをクリアしました");
     }
+function updateLoginStatus() {
+  const status = document.getElementById("loginStatus");
+  const loginBtn = document.getElementById("loginButton");
+  if (!status || !loginBtn) return;
 
+  const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
+  const now = Date.now();
+  const isLoggedIn = expiresAt > now;
+
+  if (isLoggedIn) {
+    status.textContent = `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`;
+    loginBtn.textContent = "Googleで再ログイン";
+  } else {
+    status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
+    loginBtn.textContent = "Googleでログイン";
+  }
+}
+    /*
     function updateLoginStatus() {
       const status = document.getElementById("loginStatus");
       if (!status) return;
@@ -96,7 +114,7 @@
         localStorage.removeItem("accessToken");
         localStorage.removeItem("accessTokenExpiresAt");
       }
-    }
+    }/*
     updateLoginStatus();
     setInterval(updateLoginStatus, 60000);
 
