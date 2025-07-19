@@ -19,18 +19,18 @@
   </style>
 </head>
 <body>
-  <div id="header">
-    <button onclick="showPage('index')">Index</button>
-    <button onclick="showPage('dashboard')">Dashboard</button>
-    <button onclick="showPage('edit')">Edit</button>
-  </div>
+<div id="header">
+  <button onclick="showPage('index')">Index</button>
+  <button onclick="showPage('dashboard')">Dashboard</button>
+  <button onclick="showPage('edit')">Edit</button>
+  <p id="loginStatus" style="margin:0 1em;"></p>
+  <button onclick="redirectLogin()">Googleでログイン</button>
+</div>
 
   <!-- Index Page -->
   <div id="page-index" class="page active">
     <h2>📁 Google Drive プロジェクト作成</h2>
     <button onclick="storageClear()">クリア</button>
-    <p id="loginStatus">ログイン状態</p>
-    <button onclick="redirectLogin()">Googleでログイン</button>
     <input type="text" id="projectName" placeholder="プロジェクト名を入力" /><br><br>
     <button onclick="listFolders()">📂 親フォルダ選択</button>
     <div id="folderList">(フォルダ一覧がここに表示されます)</div><br>
