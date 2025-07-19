@@ -224,8 +224,12 @@ async function findNyuunRootId(token) {
   }
 }
     async function listFolders() {
-await findNyuunRootId(token);
       const token = localStorage.getItem("accessToken");
+        if (!token) {
+          log("❌ トークンが未取得です");
+          return;
+        }
+      await findNyuunRootId(token);
       const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
         headers: { Authorization: `Bearer ${token}` }
       });
