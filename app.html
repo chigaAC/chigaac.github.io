@@ -129,7 +129,28 @@
       const created = await createRes.json();
       return created.id;
     }
+async function startProjectCreation() {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return log("❌ トークンが未取得です");
+  
+  const projectName = document.getElementById("projectName").value.trim();
+  if (!projectName) return log("❌ プロジェクト名を入力してください");
 
+  log(`📌 プロジェクト '${projectName}' を作成します...`);
+
+  let parentId = selectedParentId || await ensureNyuunFolder(token);
+  if (selectedParentId) {
+    log(`📂 選択された親フォルダ: ${selectedParentId}`);
+  } else {
+    log("📂 'nyu--n' フォルダを使用します");
+  }
+
+  localStorage.setItem("pendingProjectName", projectName);
+  localStorage.setItem("pendingParentId", parentId);
+
+  createProject(projectName, parentId, token);
+}
+    /*
     async function startProjectCreation() {
       const token = localStorage.getItem("accessToken");
       if (!token) return log("❌ トークンが未取得です");
@@ -140,7 +161,7 @@
       localStorage.setItem("pendingProjectName", projectName);
       localStorage.setItem("pendingParentId", parentId);
       createProject(projectName, parentId, token);
-    }
+    }*/
 
     async function listFolders() {
       const token = localStorage.getItem("accessToken");
@@ -158,7 +179,43 @@
         div.appendChild(document.createElement("br"));
       });
     }
+async function createProject(name, parentId, token) {
+  log(`📁 '${name}' プロジェクトを作成中...`);
 
+  const projectId = await createFolder(name, parentId, token);
+  log(`  └ プロジェクトフォルダ作成: ${projectId}`);
+
+  const memoId = await createFolder("メモ", projectId, token);
+  log(`  └ メモフォルダ作成: ${memoId}`);
+
+  const embedId = await createFolder("埋め込みファイル", projectId, token);
+  log(`  └ 埋め込みファイルフォルダ作成: ${embedId}`);
+
+  const dataId = await createFolder("アップロードデータ", projectId, token);
+  log(`  └ アップロードデータフォルダ作成: ${dataId}`);
+
+  const map = { projectName: name, folders: { memo: memoId, embed: embedId, data: dataId }, files: [] };
+  const metadata = { name: "map.json", mimeType: "application/json", parents: [projectId] };
+
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+
+  log("  └ map.json をアップロード中...");
+  const upload = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
+  });
+
+  if (upload.ok) {
+    const mapInfo = await upload.json();
+    localStorage.setItem("mapFileId", mapInfo.id);
+    mapFileId = mapInfo.id;
+    log("✅ プロジェクト作成完了");
+  } else {
+    log("❌ map.json アップロード失敗");
+  }
+}
+    /*
     async function createProject(name, parentId, token) {
       const projectId = await createFolder(name, parentId, token);
       const memoId = await createFolder("メモ", projectId, token);
@@ -181,8 +238,8 @@
         mapFileId = mapInfo.id;
         alert("✅ プロジェクト作成完了");
       } else log("❌ map.json アップロード失敗");
-    }
-
+    }*/
+      
     async function createFolder(name, parentId, token) {
       const res = await fetch("https://www.googleapis.com/drive/v3/files", {
         method: "POST",
