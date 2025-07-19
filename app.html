@@ -211,9 +211,7 @@ if (selectedParentId) {
   }
 }
 }
-
-    async function listFolders() {
-      let rootNyuunId = null;
+let rootNyuunId = null;
 
 async function findNyuunRootId(token) {
   const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
@@ -225,6 +223,8 @@ async function findNyuunRootId(token) {
     rootNyuunId = data.files[0].id;
   }
 }
+    async function listFolders() {
+await findNyuunRootId(token);
       const token = localStorage.getItem("accessToken");
       const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
         headers: { Authorization: `Bearer ${token}` }
