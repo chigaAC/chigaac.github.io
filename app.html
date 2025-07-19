@@ -328,6 +328,93 @@ async function showPreview(file) {
   const content = document.getElementById("previewContent");
   content.innerHTML = "読み込み中...";
 
+  const alwaysFetch = (file.name === "map.json"); // map.jsonは常に最新取得
+
+  // キャッシュがあれば再fetchせずに表示（map.jsonは除外）
+  if (!alwaysFetch && previewCache[file.id]) {
+    content.innerHTML = previewCache[file.id];
+    modal.style.display = "block";
+    return;
+  }
+
+  // ファイルメタデータ取得（サイズも取得）
+  const fileMetaRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType,size`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const fileMeta = await fileMetaRes.json();
+  const mimeType = fileMeta.mimeType || "application/octet-stream";
+  const fileSize = parseInt(fileMeta.size || "0", 10);
+
+  let html = "";
+
+  // --- テキストファイル ---
+  if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType.includes("markdown")) {
+    const textRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const textContent = await textRes.text();
+    const previewText =
+      textContent.length > 2000
+        ? textContent.slice(0, 2000) + "\n\n...（続きは省略）"
+        : textContent;
+    html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
+
+    // キャッシュ（map.json以外かつ1MB未満のみ）
+    if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) previewCache[file.id] = html;
+
+    content.innerHTML = html;
+    modal.style.display = "block";
+    return;
+  }
+
+  // --- 画像・音声・動画 ---
+  const blobRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const blob = await blobRes.blob();
+  const blobUrl = URL.createObjectURL(blob);
+
+  if (mimeType.startsWith("image/")) {
+    html = `<img src="${blobUrl}" style="max-width:100%; max-height:300px;">`;
+  } else if (mimeType.startsWith("audio/")) {
+    html = `<audio controls src="${blobUrl}" style="width:100%;"></audio>`;
+  } else if (mimeType.startsWith("video/")) {
+    html = `<video controls src="${blobUrl}" style="width:100%; max-height:300px;"></video>`;
+  } else {
+    html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
+  }
+
+  // キャッシュ（map.json以外かつ1MB未満のみ）
+  if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) {
+    const base64Url = await blobToBase64(blob);
+    previewCache[file.id] = html.replace(blobUrl, base64Url);
+    URL.revokeObjectURL(blobUrl);
+    content.innerHTML = previewCache[file.id];
+  } else {
+    content.innerHTML = html;
+  }
+
+  modal.style.display = "block";
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+    /*
+const previewCache = {};
+const CACHE_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB未満のファイルをキャッシュ
+
+async function showPreview(file) {
+  const modal = document.getElementById("filePreviewModal");
+  const content = document.getElementById("previewContent");
+  content.innerHTML = "読み込み中...";
+
   // キャッシュがあれば再fetchせずに表示
   if (previewCache[file.id]) {
     content.innerHTML = previewCache[file.id];
@@ -403,7 +490,7 @@ function blobToBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
-}
+}*/
     /*
 async function showPreview(file) {
   const modal = document.getElementById("filePreviewModal");
