@@ -81,6 +81,24 @@
       localStorage.clear();
       alert("LocalStorageをクリアしました");
     }
+    function updateLoginStatus() {
+      const status = /*document.getElementById("loginStatus");
+      const loginBtn = */document.getElementById("loginButton");
+      if (!status) return;
+      const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
+      const now = Date.now();
+      const isLoggedIn = expiresAt > now;
+      status.textContent = isLoggedIn
+        ? `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`
+        : "⚠️ ログアウト状態（再ログインしてください）";
+      /*loginBtn.textContent = isLoggedIn
+        ? `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`
+        : "⚠️ ログアウト状態（再ログインしてください）";*/
+      if (!isLoggedIn) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("accessTokenExpiresAt");
+      }
+    }/*
 function updateLoginStatus() {
   const status = document.getElementById("loginStatus");
   const loginBtn = document.getElementById("loginButton");
@@ -97,7 +115,7 @@ function updateLoginStatus() {
     status.textContent = "⚠️ ログアウト状態（再ログインしてください）";
     loginBtn.textContent = "Googleでログイン";
   }
-}
+}*/
     /*
     function updateLoginStatus() {
       const status = document.getElementById("loginStatus");
