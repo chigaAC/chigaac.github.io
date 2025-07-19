@@ -570,7 +570,56 @@ function closePreview() {
         filePreview.appendChild(li);
       });
     }
+async function uploadAll() {
+  if (!mapFileId) {
+    alert("❌ プロジェクトを選択してください。");
+    return;
+  }
+  if (pendingFiles.length === 0) {
+    alert("アップロードするファイルがありません");
+    return;
+  }
 
+  const map = await fetchMapJson();
+  const uploadRoot = map.folders.data;
+
+  const now = new Date();
+  const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
+  const folderId = await createFolder(folderName, uploadRoot, token);
+
+  for (const file of pendingFiles) {
+    const newFile = await uploadFileToFolder(file, folderId, token);
+    // map.json に追記
+    map.files.push({
+      id: newFile.id,
+      name: file.name,
+      path: "",   // pathは空欄
+      as: "embed",// 固定で embed
+      created: new Date().toISOString()
+    });
+  }
+
+  await saveMap(map);  // map.json更新
+
+  alert("✅ アップロード完了！");
+  pendingFiles = [];
+  refreshPreview();
+  displayFiles();
+}
+
+async function uploadFileToFolder(file, parentId, token) {
+  const metadata = { name: file.name, parents: [parentId] };
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", file);
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+  return await res.json(); // id取得のためレスポンスを返す
+}
+    /*
     async function uploadAll() {
       if (!mapFileId) {
         alert("❌ プロジェクトを選択してください。");
@@ -609,7 +658,7 @@ function closePreview() {
         body: form
       });
     }
-
+*/
     // ======== Edit 部分 ==========
     const editor = document.getElementById("editor");
     const preview = document.getElementById("preview");
