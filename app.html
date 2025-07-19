@@ -67,6 +67,47 @@
   </div>
 
   <script>
+    // ======== 共通部分 ==========
+async function findParentMapJson(folderId) {
+  if (!folderId || !rootNyuunId) return null;
+
+  // 1. 現在のフォルダで map.json を検索
+  const query = encodeURIComponent(`'${folderId}' in parents and name = 'map.json' and trashed = false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,parents)`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await res.json();
+  if (data.files.length > 0) return data.files[0].id;
+
+  // 2. 親フォルダを取得
+  const folderRes = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=parents`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const folderData = await folderRes.json();
+  if (!folderData.parents || folderData.parents.length === 0) return null;
+
+  const parentId = folderData.parents[0];
+  if (parentId === rootNyuunId) return null; // nyu--nに到達したら終了
+
+  return await findParentMapJson(parentId);
+}
+async function updateParentMapWithProject(parentMapId, projectInfo) {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${parentMapId}?alt=media`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const parentMap = await res.json();
+  parentMap.files.push(projectInfo);
+  await saveSpecificMap(parentMap, parentMapId);
+}
+
+async function saveSpecificMap(map, fileId) {
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
+  form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+  await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+    method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
+  });
+}
     // ======== ページ切り替え ==========
     function showPage(name) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -153,9 +194,37 @@ async function startProjectCreation() {
   localStorage.setItem("pendingParentId", parentId);
 
   createProject(projectName, parentId, token);
+  // プロジェクト作成完了後
+if (selectedParentId) {
+  const parentMapId = await findParentMapJson(selectedParentId);
+  if (parentMapId) {
+    await updateParentMapWithProject(parentMapId, {
+      id: mapFileId,
+      name: projectName,
+      path: "",
+      as: "project",
+      created: new Date().toISOString()
+    });
+    log("📌 親の map.json を更新しました");
+  } else {
+    log("ℹ️ 上位 map.json は見つかりませんでした");
+  }
+}
 }
 
     async function listFolders() {
+      let rootNyuunId = null;
+
+async function findNyuunRootId(token) {
+  const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await res.json();
+  if (data.files.length > 0) {
+    rootNyuunId = data.files[0].id;
+  }
+}
       const token = localStorage.getItem("accessToken");
       const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
         headers: { Authorization: `Bearer ${token}` }
