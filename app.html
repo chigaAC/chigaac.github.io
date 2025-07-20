@@ -1,855 +1,760 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>統合ツール</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    body { font-family: sans-serif; margin: 0; padding: 0; }
-    #header { background: #f0f0f0; padding: 0.5em; display: flex; gap: 1em; position: sticky; top: 0; }
-    #header button { padding: 0.4em 1em; }
-    .page { display: none; padding: 1em; }
-    .page.active { display: block; }
-    #dropZone { border: 2px dashed #888; padding: 2em; text-align: center; margin-top: 1em; }
-    #filePreview li { margin: 0.3em 0; list-style: none; }
-    #filePreview img { vertical-align: middle; }
-    button { margin-left: 0.5em; }
-    textarea { width: 100%; height: 200px; }
-    #preview { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
-  </style>
+    <meta charset="UTF-8" />
+    <title>統合ツール</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            background: #f0f0f0;
+            padding: 0.5em;
+            display: flex;
+            gap: 1em;
+            position: sticky;
+            top: 0;
+        }
+
+            #header button {
+                padding: 0.4em 1em;
+            }
+
+        .page {
+            display: none;
+            padding: 1em;
+        }
+
+            .page.active {
+                display: block;
+            }
+
+        #dropZone {
+            border: 2px dashed #888;
+            padding: 2em;
+            text-align: center;
+            margin-top: 1em;
+        }
+
+        #filePreview li {
+            margin: 0.3em 0;
+            list-style: none;
+        }
+
+        #filePreview img {
+            vertical-align: middle;
+        }
+
+        button {
+            margin-left: 0.5em;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+        }
+
+        #preview {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-<div id="header">
-  <button onclick="showPage('index')">Index</button>
-  <button onclick="showPage('dashboard')">Dashboard</button>
-  <button onclick="showPage('edit')">Edit</button>
-  <button onclick="storageClear()">クリア</button>
-  <button id="loginButton" onclick="redirectLogin()">Googleでログイン</button>
-</div>
+    <div id="header">
+        <button onclick="showPage('index')">Index</button>
+        <button onclick="showPage('dashboard')">Dashboard</button>
+        <button onclick="showPage('edit')">Edit</button>
+        <button onclick="storageClear()">クリア</button>
+        <button id="loginButton" onclick="redirectLogin()">Googleでログイン</button>
+        <button id="modeSwitchBtn" style="display:none;" onclick="toggleMode()"></button>
+    </div>
 
-  <!-- Index Page -->
-  <div id="page-index" class="page active">
-    <h2>📁 Google Drive プロジェクト作成</h2>
-    
-    <input type="text" id="projectName" placeholder="プロジェクト名を入力" /><br><br>
-    <button onclick="listFolders()">📂 親フォルダ選択</button>
-    <div id="folderList">(フォルダ一覧がここに表示されます)</div><br>
-    <button onclick="startProjectCreation()">プロジェクト作成</button>
-    <pre id="log">(ここにログが表示されます)</pre>
-  </div>
+    <!-- Index Page -->
+    <div id="page-index" class="page active">
+        <h2>📁 Google Drive プロジェクト作成</h2>
 
-  <!-- Dashboard Page -->
-  <div id="page-dashboard" class="page">
-    <h2>プロジェクト内容</h2>
-    <select id="projectSelect" onchange="selectProject(this.value)">
-      <option value="">-- プロジェクトを選択 --</option>
-    </select>
-    <button onclick="createMemo()">📝 メモ新規作成</button>
-    <div id="dropZone">ここにファイルをドラッグ＆ドロップ（または下のボタンで選択）</div>
-    <input type="file" id="filePicker" multiple style="margin-top:10px;" />
-    <ul id="filePreview"></ul>
-    <button onclick="uploadAll()">完了してアップロード</button>
-    <h3>📄 ファイル一覧</h3>
-    <div id="fileList">(読み込み中...)</div>
-<div id="filePreviewModal" style="display:none; border:1px solid #888; padding:10px; margin-top:20px;">
-  <button onclick="closePreview()" style="float:right;">×</button>
-  <div id="previewContent">(プレビューがここに表示されます)</div>
-</div>
-  </div>
+        <input type="text" id="projectName" placeholder="プロジェクト名を入力" /><br><br>
+        <button onclick="listFolders()">📂 親フォルダ選択</button>
+        <div id="folderList">(フォルダ一覧がここに表示されます)</div><br>
+        <button onclick="startProjectCreation()">プロジェクト作成</button>
+        <pre id="log">(ここにログが表示されます)</pre>
+    </div>
 
-  <!-- Edit Page -->
-  <div id="page-edit" class="page">
-    <h2 id="projectTitle">📝 Markdown編集</h2>
-    <button onclick="save()">💾 保存</button>
-    <textarea id="editor"></textarea>
-    <h3>📄 プレビュー</h3>
-    <div id="preview"></div>
-  </div>
+    <!-- Dashboard Page -->
+    <div id="page-dashboard" class="page">
+        <h2>プロジェクト内容</h2>
+        <select id="projectSelect" onchange="selectProject(this.value)">
+            <option value="">-- プロジェクトを選択 --</option>
+        </select>
+        <button onclick="createMemo()">📝 メモ新規作成</button>
+        <div id="dropZone">ここにファイルをドラッグ＆ドロップ（または下のボタンで選択）</div>
+        <input type="file" id="filePicker" multiple style="margin-top:10px;" />
+        <ul id="filePreview"></ul>
+        <button onclick="uploadAll()">完了してアップロード</button>
+        <h3>📄 ファイル一覧</h3>
+        <div id="fileList">(読み込み中...)</div>
+        <div id="filePreviewModal" style="display:none; border:1px solid #888; padding:10px; margin-top:20px;">
+            <button onclick="closePreview()" style="float:right;">×</button>
+            <div id="previewContent">(プレビューがここに表示されます)</div>
+        </div>
+    </div>
 
-  <script>
-    // ======== 共通部分 ==========
-async function findParentMapJson(folderId) {
-  if (!folderId || !rootNyuunId) return null;
+    <!-- Edit Page -->
+    <div id="page-edit" class="page">
+        <h2 id="projectTitle">📝 Markdown編集</h2>
+        <button onclick="save()">💾 保存</button>
+        <textarea id="editor"></textarea>
+        <h3>📄 プレビュー</h3>
+        <div id="preview"></div>
+    </div>
 
-  // 1. 現在のフォルダで map.json を検索
-  const query = encodeURIComponent(`'${folderId}' in parents and name = 'map.json' and trashed = false`);
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,parents)`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  if (data.files.length > 0) return data.files[0].id;
+    <script>
+        // ======== 共通部分 ==========
+        //ブラウザ、ローカル間の切り替え
+        /*function isElectron() {
+            return typeof window !== 'undefined' &&
+                typeof window.process === 'object' &&
+                window.process.type === 'renderer';
+        }*/
+        function isElectron() {
+            return navigator.userAgent.toLowerCase().indexOf('electron') !== -1;
+        }
+        function initModeButton() {
+            const btn = document.getElementById('modeSwitchBtn');
+            if (!isElectron()) return; // Electron以外では非表示
 
-  // 2. 親フォルダを取得
-  const folderRes = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=parents`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const folderData = await folderRes.json();
-  if (!folderData.parents || folderData.parents.length === 0) return null;
+            btn.style.display = 'inline-block';
+            if (window.location.pathname.endsWith('local.html')) {
+                btn.textContent = 'ブラウザモードに切り替える';
+            } else {
+                btn.textContent = 'ローカルモードに切り替える';
+            }
+        }
 
-  const parentId = folderData.parents[0];
-  if (parentId === rootNyuunId) return null; // nyu--nに到達したら終了
+        window.addEventListener('DOMContentLoaded', initModeButton);
+        function toggleMode() {
+            if (window.location.pathname.endsWith('local.html')) {
+                // local.html -> app.html
+                window.location.href = 'app.html';
+            } else {
+                // app.html -> local.html
+                window.location.href = 'local.html';
+            }
+        }
 
-  return await findParentMapJson(parentId);
-}
-async function updateParentMapWithProject(parentMapId, projectInfo) {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${parentMapId}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const parentMap = await res.json();
-  parentMap.files.push(projectInfo);
-  await saveSpecificMap(parentMap, parentMapId);
-}
+        async function findParentMapJson(folderId) {
+            if (!folderId || !rootNyuunId) return null;
 
-async function saveSpecificMap(map, fileId) {
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
-  form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
-  await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
-    method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
-  });
-}
-    // ======== ページ切り替え ==========
-    function showPage(name) {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById(`page-${name}`).classList.add('active');
-      if (name === 'dashboard') {
+            // 1. 現在のフォルダで map.json を検索
+            const query = encodeURIComponent(`'${folderId}' in parents and name = 'map.json' and trashed = false`);
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,parents)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.files.length > 0) return data.files[0].id;
+
+            // 2. 親フォルダを取得
+            const folderRes = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=parents`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const folderData = await folderRes.json();
+            if (!folderData.parents || folderData.parents.length === 0) return null;
+
+            const parentId = folderData.parents[0];
+            if (parentId === rootNyuunId) return null; // nyu--nに到達したら終了
+
+            return await findParentMapJson(parentId);
+        }
+        async function updateParentMapWithProject(parentMapId, projectInfo) {
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${parentMapId}?alt=media`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const parentMap = await res.json();
+            parentMap.files.push(projectInfo);
+            await saveSpecificMap(parentMap, parentMapId);
+        }
+
+        async function saveSpecificMap(map, fileId) {
+            const form = new FormData();
+            form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
+            form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+            await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+                method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
+            });
+        }
+        // ======== ページ切り替え ==========
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${name}`).classList.add('active');
+            if (name === 'dashboard') {
+                listProjects();
+                displayFiles();
+            }
+        }
+
+        const token = localStorage.getItem("accessToken");
+        let mapFileId = localStorage.getItem("mapFileId");
+        let currentEditFileId = null;
+
+        // ======== Index 部分 ==========
+        function storageClear() {
+            localStorage.clear();
+            alert("LocalStorageをクリアしました");
+        }
+        function updateLoginStatus() {
+            const status = document.getElementById("loginButton");
+            if (!status) return;
+            const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
+            const now = Date.now();
+            const isLoggedIn = expiresAt > now;
+            status.textContent = isLoggedIn
+                ? `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`
+                : "⚠️ ログアウト状態（再ログインしてください）";
+            if (!isLoggedIn) {
+                localStorage.removeItem("accessToken");
+                localStorage.removeItem("accessTokenExpiresAt");
+            }
+        }
+        updateLoginStatus();
+        setInterval(updateLoginStatus, 60000);
+
+        const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
+        const redirectUri = "https://chigaac.github.io/callback.html";
+        const scope = "https://www.googleapis.com/auth/drive.file";
+
+        let selectedParentId = null;
+        const log = msg => document.getElementById("log").textContent += `\n${msg}`;
+
+        function redirectLogin() {
+            const params = new URLSearchParams({
+                client_id: clientId, redirect_uri: redirectUri, response_type: "token",
+                scope: scope, include_granted_scopes: "true"
+            });
+            location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+        }
+
+        async function ensureNyuunFolder(token) {
+            const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.files.length > 0) return data.files[0].id;
+            const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ name: "nyu--n", mimeType: "application/vnd.google-apps.folder" })
+            });
+            const created = await createRes.json();
+            return created.id;
+        }
+        async function startProjectCreation() {
+            const token = localStorage.getItem("accessToken");
+            if (!token) return log("❌ トークンが未取得です");
+
+            const projectName = document.getElementById("projectName").value.trim();
+            if (!projectName) return log("❌ プロジェクト名を入力してください");
+
+            log(`📌 プロジェクト '${projectName}' を作成します...`);
+
+            let parentId = selectedParentId || await ensureNyuunFolder(token);
+            if (selectedParentId) {
+                log(`📂 選択された親フォルダ: ${selectedParentId}`);
+            } else {
+                log("📂 'nyu--n' フォルダを使用します");
+            }
+
+            localStorage.setItem("pendingProjectName", projectName);
+            localStorage.setItem("pendingParentId", parentId);
+
+            createProject(projectName, parentId, token);
+            // プロジェクト作成完了後
+            if (selectedParentId) {
+                const parentMapId = await findParentMapJson(selectedParentId);
+                if (parentMapId) {
+                    await updateParentMapWithProject(parentMapId, {
+                        id: mapFileId,
+                        name: projectName,
+                        path: "",
+                        as: "project",
+                        created: new Date().toISOString()
+                    });
+                    log("📌 親の map.json を更新しました");
+                } else {
+                    log("ℹ️ 上位 map.json は見つかりませんでした");
+                }
+            }
+        }
+        let rootNyuunId = null;
+
+        async function findNyuunRootId(token) {
+            const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.files.length > 0) {
+                rootNyuunId = data.files[0].id;
+            }
+        }
+        async function listFolders() {
+            const token = localStorage.getItem("accessToken");
+            if (!token) {
+                log("❌ トークンが未取得です");
+                return;
+            }
+            await findNyuunRootId(token);
+            const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const result = await res.json();
+            const div = document.getElementById("folderList");
+            div.innerHTML = "";
+            result.files.forEach(f => {
+                const btn = document.createElement("button");
+                btn.textContent = f.name;
+                btn.onclick = () => { selectedParentId = f.id; log(`📌 親フォルダ選択: ${f.name}`); };
+                div.appendChild(btn);
+                div.appendChild(document.createElement("br"));
+            });
+        }
+        async function createProject(name, parentId, token) {
+            log(`📁 '${name}' プロジェクトを作成中...`);
+
+            const projectId = await createFolder(name, parentId, token);
+            log(`  └ プロジェクトフォルダ作成: ${projectId}`);
+
+            const memoId = await createFolder("メモ", projectId, token);
+            log(`  └ メモフォルダ作成: ${memoId}`);
+
+            const embedId = await createFolder("埋め込みファイル", projectId, token);
+            log(`  └ 埋め込みファイルフォルダ作成: ${embedId}`);
+
+            const dataId = await createFolder("アップロードデータ", projectId, token);
+            log(`  └ アップロードデータフォルダ作成: ${dataId}`);
+
+            const map = { projectName: name, folders: { memo: memoId, embed: embedId, data: dataId }, files: [] };
+            const metadata = { name: "map.json", mimeType: "application/json", parents: [projectId] };
+
+            const form = new FormData();
+            form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+            form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+
+            log("  └ map.json をアップロード中...");
+            const upload = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+                method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
+            });
+
+            if (upload.ok) {
+                const mapInfo = await upload.json();
+                localStorage.setItem("mapFileId", mapInfo.id);
+                mapFileId = mapInfo.id;
+                log("✅ プロジェクト作成完了");
+            } else {
+                log("❌ map.json アップロード失敗");
+            }
+        }
+
+        async function createFolder(name, parentId, token) {
+            const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] })
+            });
+            return (await res.json()).id;
+        }
+
+        // ======== Dashboard 部分 ==========
+        async function fetchMapJson() {
+            if (!mapFileId) return null;
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?alt=media`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return await res.json();
+        }
+
+        async function listProjects() {
+            const res = await fetch(
+                "https://www.googleapis.com/drive/v3/files?q=name='map.json' and trashed=false&fields=files(id,name,parents)",
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const data = await res.json();
+            const select = document.getElementById("projectSelect");
+            select.innerHTML = "<option value=''>-- プロジェクトを選択 --</option>";
+            for (const f of data.files) {
+                let parentName = "(不明)";
+                if (f.parents && f.parents.length > 0) {
+                    const parentId = f.parents[0];
+                    const parentRes = await fetch(`https://www.googleapis.com/drive/v3/files/${parentId}?fields=name`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const parentData = await parentRes.json();
+                    parentName = parentData.name;
+                }
+                const option = document.createElement("option");
+                option.value = f.id;
+                option.textContent = parentName;
+                if (f.id === mapFileId) option.selected = true;
+                select.appendChild(option);
+            }
+        }
+
+        function selectProject(id) {
+            if (!id) return;
+            mapFileId = id;
+            localStorage.setItem("mapFileId", id);
+            displayFiles();
+        }
+
+        async function listFiles(folderId) {
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            return data.files || [];
+        }
+        // 指定フォルダの中身を再帰的に表示する
+        async function listFolderRecursive(folderId, container, indent = "") {
+            const items = await listFiles(folderId);
+            for (const item of items) {
+                const a = document.createElement("a");
+                a.href = "#";
+                a.textContent = indent + item.name;
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    showPreview(item);
+                };
+                container.appendChild(a);
+
+                // フォルダの場合は再帰呼び出し
+                if (item.mimeType === "application/vnd.google-apps.folder") {
+                    await listFolderRecursive(item.id, container, indent + "　"); // 全角スペースでインデント
+                }
+            }
+        }
+        async function displayFiles() {
+            const listEl = document.getElementById("fileList");
+            if (!mapFileId) { listEl.textContent = "❌ プロジェクトが選択されていません"; return; }
+            try {
+                const map = await fetchMapJson();
+                if (!map) return;
+                const memoFiles = await listFiles(map.folders.memo);
+                const embedFiles = await listFiles(map.folders.embed);
+
+                listEl.innerHTML = "<strong>🗂 メモ:</strong><br/>";
+                memoFiles.forEach(f => {
+                    const a = document.createElement("a");
+                    a.href = "#";
+                    a.textContent = f.name;
+                    a.onclick = () => { currentEditFileId = f.id; showPage('edit'); loadFile(); };
+                    listEl.appendChild(a);
+                });
+
+                listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
+                embedFiles.forEach(f => {
+                    const a = document.createElement("a");
+                    a.href = "#";
+                    a.textContent = f.name;
+                    a.onclick = (e) => {
+                        e.preventDefault();
+                        showPreview(f);
+                    };
+                    listEl.appendChild(a);
+                });
+
+                // アップロードデータの項目
+                listEl.innerHTML += "<br/><strong>📦 アップロードデータ:</strong><br/>";
+                await listFolderRecursive(map.folders.data, listEl);
+            } catch (e) { listEl.textContent = "❌ エラー"; console.error(e); }
+        }
+        const previewCache = {};
+        const CACHE_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB未満のファイルをキャッシュ
+
+        async function showPreview(file) {
+            const modal = document.getElementById("filePreviewModal");
+            const content = document.getElementById("previewContent");
+            content.innerHTML = "読み込み中...";
+
+            const alwaysFetch = (file.name === "map.json"); // map.jsonは常に最新取得
+
+            // キャッシュがあれば再fetchせずに表示（map.jsonは除外）
+            if (!alwaysFetch && previewCache[file.id]) {
+                content.innerHTML = previewCache[file.id];
+                modal.style.display = "block";
+                return;
+            }
+
+            // ファイルメタデータ取得（サイズも取得）
+            const fileMetaRes = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType,size`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const fileMeta = await fileMetaRes.json();
+            const mimeType = fileMeta.mimeType || "application/octet-stream";
+            const fileSize = parseInt(fileMeta.size || "0", 10);
+
+            let html = "";
+
+            // --- テキストファイル ---
+            if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType.includes("markdown")) {
+                const textRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const textContent = await textRes.text();
+                const previewText =
+                    textContent.length > 2000
+                        ? textContent.slice(0, 2000) + "\n\n...（続きは省略）"
+                        : textContent;
+                html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
+
+                // キャッシュ（map.json以外かつ1MB未満のみ）
+                if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) previewCache[file.id] = html;
+
+                content.innerHTML = html;
+                modal.style.display = "block";
+                return;
+            }
+
+            // --- 画像・音声・動画 ---
+            const blobRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const blob = await blobRes.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            if (mimeType.startsWith("image/")) {
+                html = `<img src="${blobUrl}" style="max-width:100%; max-height:300px;">`;
+            } else if (mimeType.startsWith("audio/")) {
+                html = `<audio controls src="${blobUrl}" style="width:100%;"></audio>`;
+            } else if (mimeType.startsWith("video/")) {
+                html = `<video controls src="${blobUrl}" style="width:100%; max-height:300px;"></video>`;
+            } else {
+                html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
+            }
+
+            // キャッシュ（map.json以外かつ1MB未満のみ）
+            if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) {
+                const base64Url = await blobToBase64(blob);
+                previewCache[file.id] = html.replace(blobUrl, base64Url);
+                URL.revokeObjectURL(blobUrl);
+                content.innerHTML = previewCache[file.id];
+            } else {
+                content.innerHTML = html;
+            }
+
+            modal.style.display = "block";
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+        // HTMLエスケープ（テキストプレビューでHTMLタグを無効化するため）
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, function (m) {
+                return {
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    '"': "&quot;",
+                    "'": "&#39;"
+                }[m];
+            });
+        }
+
+        function closePreview() {
+            document.getElementById("filePreviewModal").style.display = "none";
+        }
+        async function createMemo() {
+            if (!mapFileId) { alert("❌ プロジェクトを選択してください。"); return; }
+            const map = await fetchMapJson();
+            const fileName = `新規メモ_${Date.now()}.md`;
+            const metadata = { name: fileName, mimeType: "text/markdown", parents: [map.folders.memo] };
+            const form = new FormData();
+            form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+            form.append("file", new Blob([""], { type: "text/markdown" }));
+            const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+                method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
+            });
+            if (!res.ok) { alert("❌ メモ作成に失敗しました"); return; }
+            const newFile = await res.json();
+            map.files.push({ id: newFile.id, name: fileName, path: ["memo"], as: "memo", created: new Date().toISOString() });
+            await saveMap(map);
+            currentEditFileId = newFile.id;
+            showPage('edit');
+            loadFile();
+        }
+
+        async function saveMap(map) {
+            const form = new FormData();
+            form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
+            form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+            await fetch(`https://www.googleapis.com/upload/drive/v3/files/${mapFileId}?uploadType=multipart`, {
+                method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
+            });
+        }
+
+        // --- アップロード処理 ---
+        let pendingFiles = [];
+        const dropZone = document.getElementById("dropZone");
+        const filePicker = document.getElementById("filePicker");
+        const filePreview = document.getElementById("filePreview");
+
+        dropZone.addEventListener("dragover", e => {
+            e.preventDefault();
+            dropZone.style.background = "#eef";
+        });
+        dropZone.addEventListener("dragleave", () => dropZone.style.background = "");
+        dropZone.addEventListener("drop", e => {
+            e.preventDefault();
+            dropZone.style.background = "";
+            pendingFiles.push(...Array.from(e.dataTransfer.files));
+            refreshPreview();
+        });
+        filePicker.addEventListener("change", e => {
+            pendingFiles.push(...Array.from(e.target.files));
+            refreshPreview();
+            filePicker.value = "";
+        });
+
+        function refreshPreview() {
+            filePreview.innerHTML = "";
+            pendingFiles.forEach((file, index) => {
+                const li = document.createElement("li");
+                const nameSpan = document.createElement("span");
+                nameSpan.textContent = `${file.name} (${Math.round(file.size / 1024)} KB) `;
+                li.appendChild(nameSpan);
+
+                const preview = document.createElement("span");
+                preview.style.margin = "0 10px";
+                preview.style.display = "inline-block";
+
+                if (file.type.startsWith("image/")) {
+                    const img = document.createElement("img");
+                    img.style.maxWidth = "80px";
+                    img.style.maxHeight = "60px";
+                    img.style.objectFit = "cover";
+                    const reader = new FileReader();
+                    reader.onload = e => (img.src = e.target.result);
+                    reader.readAsDataURL(file);
+                    preview.appendChild(img);
+                } else if (file.type.startsWith("video/")) {
+                    preview.textContent = "🎞️";
+                } else if (file.type.startsWith("audio/")) {
+                    preview.textContent = "🎵";
+                } else if (file.type.startsWith("text/") || file.type === "application/json") {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const content = e.target.result.slice(0, 20).replace(/\n/g, " ");
+                        preview.textContent = `📝 ${content}${content.length >= 20 ? "..." : ""}`;
+                    };
+                    reader.readAsText(file);
+                } else {
+                    preview.textContent = "📄";
+                }
+                li.appendChild(preview);
+
+                const delBtn = document.createElement("button");
+                delBtn.textContent = "削除";
+                delBtn.onclick = () => {
+                    pendingFiles.splice(index, 1);
+                    refreshPreview();
+                };
+                li.appendChild(delBtn);
+
+                filePreview.appendChild(li);
+            });
+        }
+        async function uploadAll() {
+            if (!mapFileId) {
+                alert("❌ プロジェクトを選択してください。");
+                return;
+            }
+            if (pendingFiles.length === 0) {
+                alert("アップロードするファイルがありません");
+                return;
+            }
+
+            const map = await fetchMapJson();
+            const uploadRoot = map.folders.data;
+
+            const now = new Date();
+            const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
+            const folderId = await createFolder(folderName, uploadRoot, token);
+
+            for (const file of pendingFiles) {
+                const newFile = await uploadFileToFolder(file, folderId, token);
+                // map.json に追記
+                map.files.push({
+                    id: newFile.id,
+                    name: file.name,
+                    path: "",   // pathは空欄
+                    as: "embed",// 固定で embed
+                    created: new Date().toISOString()
+                });
+            }
+
+            await saveMap(map);  // map.json更新
+
+            alert("✅ アップロード完了！");
+            pendingFiles = [];
+            refreshPreview();
+            displayFiles();
+        }
+
+        async function uploadFileToFolder(file, parentId, token) {
+            const metadata = { name: file.name, parents: [parentId] };
+            const form = new FormData();
+            form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+            form.append("file", file);
+            const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: form
+            });
+            return await res.json(); // id取得のためレスポンスを返す
+        }
+        // ======== Edit 部分 ==========
+        const editor = document.getElementById("editor");
+        const preview = document.getElementById("preview");
+
+        async function loadFile() {
+            if (!currentEditFileId) return;
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${currentEditFileId}?alt=media`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const text = await res.text();
+            editor.value = text;
+            updatePreview();
+        }
+
+        function updatePreview() {
+            preview.innerHTML = marked.parse(editor.value);
+        }
+        editor.addEventListener("input", updatePreview);
+
+        async function save() {
+            if (!currentEditFileId) return;
+            const content = editor.value;
+            const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${currentEditFileId}?uploadType=media`, {
+                method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: content
+            });
+            if (res.ok) alert("✅ 保存しました！");
+        }
+
+        // 初期化
         listProjects();
         displayFiles();
-      }
-    }
-
-    const token = localStorage.getItem("accessToken");
-    let mapFileId = localStorage.getItem("mapFileId");
-    let currentEditFileId = null;
-
-    // ======== Index 部分 ==========
-    function storageClear() {
-      localStorage.clear();
-      alert("LocalStorageをクリアしました");
-    }
-    function updateLoginStatus() {
-      const status = document.getElementById("loginButton");
-      if (!status) return;
-      const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
-      const now = Date.now();
-      const isLoggedIn = expiresAt > now;
-      status.textContent = isLoggedIn
-        ? `✅ ログイン中（残り約 ${Math.floor((expiresAt - now) / 60000)} 分）`
-        : "⚠️ ログアウト状態（再ログインしてください）";
-      if (!isLoggedIn) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("accessTokenExpiresAt");
-      }
-    }
-    updateLoginStatus();
-    setInterval(updateLoginStatus, 60000);
-
-    const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
-    const redirectUri = "https://chigaac.github.io/callback.html";
-    const scope = "https://www.googleapis.com/auth/drive.file";
-
-    let selectedParentId = null;
-    const log = msg => document.getElementById("log").textContent += `\n${msg}`;
-
-    function redirectLogin() {
-      const params = new URLSearchParams({
-        client_id: clientId, redirect_uri: redirectUri, response_type: "token",
-        scope: scope, include_granted_scopes: "true"
-      });
-      location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-    }
-
-    async function ensureNyuunFolder(token) {
-      const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.files.length > 0) return data.files[0].id;
-      const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "nyu--n", mimeType: "application/vnd.google-apps.folder" })
-      });
-      const created = await createRes.json();
-      return created.id;
-    }
-async function startProjectCreation() {
-  const token = localStorage.getItem("accessToken");
-  if (!token) return log("❌ トークンが未取得です");
-  
-  const projectName = document.getElementById("projectName").value.trim();
-  if (!projectName) return log("❌ プロジェクト名を入力してください");
-
-  log(`📌 プロジェクト '${projectName}' を作成します...`);
-
-  let parentId = selectedParentId || await ensureNyuunFolder(token);
-  if (selectedParentId) {
-    log(`📂 選択された親フォルダ: ${selectedParentId}`);
-  } else {
-    log("📂 'nyu--n' フォルダを使用します");
-  }
-
-  localStorage.setItem("pendingProjectName", projectName);
-  localStorage.setItem("pendingParentId", parentId);
-
-  createProject(projectName, parentId, token);
-  // プロジェクト作成完了後
-if (selectedParentId) {
-  const parentMapId = await findParentMapJson(selectedParentId);
-  if (parentMapId) {
-    await updateParentMapWithProject(parentMapId, {
-      id: mapFileId,
-      name: projectName,
-      path: "",
-      as: "project",
-      created: new Date().toISOString()
-    });
-    log("📌 親の map.json を更新しました");
-  } else {
-    log("ℹ️ 上位 map.json は見つかりませんでした");
-  }
-}
-}
-let rootNyuunId = null;
-
-async function findNyuunRootId(token) {
-  const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  if (data.files.length > 0) {
-    rootNyuunId = data.files[0].id;
-  }
-}
-    async function listFolders() {
-      const token = localStorage.getItem("accessToken");
-        if (!token) {
-          log("❌ トークンが未取得です");
-          return;
-        }
-      await findNyuunRootId(token);
-      const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const result = await res.json();
-      const div = document.getElementById("folderList");
-      div.innerHTML = "";
-      result.files.forEach(f => {
-        const btn = document.createElement("button");
-        btn.textContent = f.name;
-        btn.onclick = () => { selectedParentId = f.id; log(`📌 親フォルダ選択: ${f.name}`); };
-        div.appendChild(btn);
-        div.appendChild(document.createElement("br"));
-      });
-    }
-async function createProject(name, parentId, token) {
-  log(`📁 '${name}' プロジェクトを作成中...`);
-
-  const projectId = await createFolder(name, parentId, token);
-  log(`  └ プロジェクトフォルダ作成: ${projectId}`);
-
-  const memoId = await createFolder("メモ", projectId, token);
-  log(`  └ メモフォルダ作成: ${memoId}`);
-
-  const embedId = await createFolder("埋め込みファイル", projectId, token);
-  log(`  └ 埋め込みファイルフォルダ作成: ${embedId}`);
-
-  const dataId = await createFolder("アップロードデータ", projectId, token);
-  log(`  └ アップロードデータフォルダ作成: ${dataId}`);
-
-  const map = { projectName: name, folders: { memo: memoId, embed: embedId, data: dataId }, files: [] };
-  const metadata = { name: "map.json", mimeType: "application/json", parents: [projectId] };
-
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-  form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
-
-  log("  └ map.json をアップロード中...");
-  const upload = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-    method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
-  });
-
-  if (upload.ok) {
-    const mapInfo = await upload.json();
-    localStorage.setItem("mapFileId", mapInfo.id);
-    mapFileId = mapInfo.id;
-    log("✅ プロジェクト作成完了");
-  } else {
-    log("❌ map.json アップロード失敗");
-  }
-}
-      
-    async function createFolder(name, parentId, token) {
-      const res = await fetch("https://www.googleapis.com/drive/v3/files", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] })
-      });
-      return (await res.json()).id;
-    }
-
-    // ======== Dashboard 部分 ==========
-    async function fetchMapJson() {
-      if (!mapFileId) return null;
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?alt=media`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return await res.json();
-    }
-
-    async function listProjects() {
-      const res = await fetch(
-        "https://www.googleapis.com/drive/v3/files?q=name='map.json' and trashed=false&fields=files(id,name,parents)",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      const select = document.getElementById("projectSelect");
-      select.innerHTML = "<option value=''>-- プロジェクトを選択 --</option>";
-      for (const f of data.files) {
-        let parentName = "(不明)";
-        if (f.parents && f.parents.length > 0) {
-          const parentId = f.parents[0];
-          const parentRes = await fetch(`https://www.googleapis.com/drive/v3/files/${parentId}?fields=name`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const parentData = await parentRes.json();
-          parentName = parentData.name;
-        }
-        const option = document.createElement("option");
-        option.value = f.id;
-        option.textContent = parentName;
-        if (f.id === mapFileId) option.selected = true;
-        select.appendChild(option);
-      }
-    }
-
-    function selectProject(id) {
-      if (!id) return;
-      mapFileId = id;
-      localStorage.setItem("mapFileId", id);
-      displayFiles();
-    }
-
-    async function listFiles(folderId) {
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      return data.files || [];
-    }
-// 指定フォルダの中身を再帰的に表示する
-async function listFolderRecursive(folderId, container, indent = "") {
-  const items = await listFiles(folderId);
-  for (const item of items) {
-    const a = document.createElement("a");
-    a.href = "#";
-    a.textContent = indent + item.name;
-    a.onclick = (e) => {
-      e.preventDefault();
-      showPreview(item);
-    };
-    container.appendChild(a);
-
-    // フォルダの場合は再帰呼び出し
-    if (item.mimeType === "application/vnd.google-apps.folder") {
-      await listFolderRecursive(item.id, container, indent + "　"); // 全角スペースでインデント
-    }
-  }
-}
-async function displayFiles() {
-  const listEl = document.getElementById("fileList");
-  if (!mapFileId) { listEl.textContent = "❌ プロジェクトが選択されていません"; return; }
-  try {
-    const map = await fetchMapJson();
-    if (!map) return;
-    const memoFiles = await listFiles(map.folders.memo);
-    const embedFiles = await listFiles(map.folders.embed);
-
-    listEl.innerHTML = "<strong>🗂 メモ:</strong><br/>";
-    memoFiles.forEach(f => {
-      const a = document.createElement("a");
-      a.href = "#";
-      a.textContent = f.name;
-      a.onclick = () => { currentEditFileId = f.id; showPage('edit'); loadFile(); };
-      listEl.appendChild(a);
-    });
-
-    listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
-    embedFiles.forEach(f => {
-      const a = document.createElement("a");
-      a.href = "#";
-      a.textContent = f.name;
-      a.onclick = (e) => {
-        e.preventDefault();
-        showPreview(f);
-      };
-      listEl.appendChild(a);
-    });
-
-    // アップロードデータの項目
-    listEl.innerHTML += "<br/><strong>📦 アップロードデータ:</strong><br/>";
-    await listFolderRecursive(map.folders.data, listEl);
-  } catch (e) { listEl.textContent = "❌ エラー"; console.error(e); }
-}
-const previewCache = {};
-const CACHE_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB未満のファイルをキャッシュ
-
-async function showPreview(file) {
-  const modal = document.getElementById("filePreviewModal");
-  const content = document.getElementById("previewContent");
-  content.innerHTML = "読み込み中...";
-
-  const alwaysFetch = (file.name === "map.json"); // map.jsonは常に最新取得
-
-  // キャッシュがあれば再fetchせずに表示（map.jsonは除外）
-  if (!alwaysFetch && previewCache[file.id]) {
-    content.innerHTML = previewCache[file.id];
-    modal.style.display = "block";
-    return;
-  }
-
-  // ファイルメタデータ取得（サイズも取得）
-  const fileMetaRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType,size`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const fileMeta = await fileMetaRes.json();
-  const mimeType = fileMeta.mimeType || "application/octet-stream";
-  const fileSize = parseInt(fileMeta.size || "0", 10);
-
-  let html = "";
-
-  // --- テキストファイル ---
-  if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType.includes("markdown")) {
-    const textRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const textContent = await textRes.text();
-    const previewText =
-      textContent.length > 2000
-        ? textContent.slice(0, 2000) + "\n\n...（続きは省略）"
-        : textContent;
-    html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
-
-    // キャッシュ（map.json以外かつ1MB未満のみ）
-    if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) previewCache[file.id] = html;
-
-    content.innerHTML = html;
-    modal.style.display = "block";
-    return;
-  }
-
-  // --- 画像・音声・動画 ---
-  const blobRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const blob = await blobRes.blob();
-  const blobUrl = URL.createObjectURL(blob);
-
-  if (mimeType.startsWith("image/")) {
-    html = `<img src="${blobUrl}" style="max-width:100%; max-height:300px;">`;
-  } else if (mimeType.startsWith("audio/")) {
-    html = `<audio controls src="${blobUrl}" style="width:100%;"></audio>`;
-  } else if (mimeType.startsWith("video/")) {
-    html = `<video controls src="${blobUrl}" style="width:100%; max-height:300px;"></video>`;
-  } else {
-    html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
-  }
-
-  // キャッシュ（map.json以外かつ1MB未満のみ）
-  if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) {
-    const base64Url = await blobToBase64(blob);
-    previewCache[file.id] = html.replace(blobUrl, base64Url);
-    URL.revokeObjectURL(blobUrl);
-    content.innerHTML = previewCache[file.id];
-  } else {
-    content.innerHTML = html;
-  }
-
-  modal.style.display = "block";
-}
-
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-    /*
-const previewCache = {};
-const CACHE_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB未満のファイルをキャッシュ
-
-async function showPreview(file) {
-  const modal = document.getElementById("filePreviewModal");
-  const content = document.getElementById("previewContent");
-  content.innerHTML = "読み込み中...";
-
-  // キャッシュがあれば再fetchせずに表示
-  if (previewCache[file.id]) {
-    content.innerHTML = previewCache[file.id];
-    modal.style.display = "block";
-    return;
-  }
-
-  // ファイルメタデータ取得（サイズも取得）
-  const fileMetaRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType,size`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const fileMeta = await fileMetaRes.json();
-  const mimeType = fileMeta.mimeType || "application/octet-stream";
-  const fileSize = parseInt(fileMeta.size || "0", 10);
-
-  let html = "";
-
-  // --- テキストファイル ---
-  if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType.includes("markdown")) {
-    const textRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const textContent = await textRes.text();
-    const previewText =
-      textContent.length > 2000
-        ? textContent.slice(0, 2000) + "\n\n...（続きは省略）"
-        : textContent;
-    html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
-
-    // キャッシュ（1MB未満）
-    if (fileSize < CACHE_SIZE_LIMIT) previewCache[file.id] = html;
-
-    content.innerHTML = html;
-    modal.style.display = "block";
-    return;
-  }
-
-  // --- 画像・音声・動画 ---
-  const blobRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const blob = await blobRes.blob();
-  const blobUrl = URL.createObjectURL(blob);
-
-  if (mimeType.startsWith("image/")) {
-    html = `<img src="${blobUrl}" style="max-width:100%; max-height:300px;">`;
-  } else if (mimeType.startsWith("audio/")) {
-    html = `<audio controls src="${blobUrl}" style="width:100%;"></audio>`;
-  } else if (mimeType.startsWith("video/")) {
-    html = `<video controls src="${blobUrl}" style="width:100%; max-height:300px;"></video>`;
-  } else {
-    html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
-  }
-
-  // 1MB未満ならBase64化してキャッシュ
-  if (fileSize < CACHE_SIZE_LIMIT) {
-    const base64Url = await blobToBase64(blob);
-    previewCache[file.id] = html.replace(blobUrl, base64Url);
-    URL.revokeObjectURL(blobUrl); // メモリ解放
-    content.innerHTML = previewCache[file.id];
-  } else {
-    content.innerHTML = html;
-  }
-
-  modal.style.display = "block";
-}
-
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}*/
-    /*
-async function showPreview(file) {
-  const modal = document.getElementById("filePreviewModal");
-  const content = document.getElementById("previewContent");
-  content.innerHTML = "読み込み中...";
-
-  // ファイルメタデータ取得
-  const fileMetaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const fileMeta = await fileMetaRes.json();
-  const mimeType = fileMeta.mimeType || "application/octet-stream";
-
-  let html = "";
-
-  // テキストファイル
-  if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType.includes("markdown")) {
-    const textRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const textContent = await textRes.text();
-    const previewText = textContent.length > 2000 ? textContent.slice(0, 2000) + "\n\n...（続きは省略）" : textContent;
-    html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
-    content.innerHTML = html;
-    modal.style.display = "block";
-    return;
-  }
-
-  // 画像・音声・動画ファイルはBlob経由でURLを作成
-  const blobRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const blob = await blobRes.blob();
-  const blobUrl = URL.createObjectURL(blob);
-
-  if (mimeType.startsWith("image/")) {
-    html = `<img src="${blobUrl}" style="max-width:100%; max-height:300px;">`;
-  } else if (mimeType.startsWith("audio/")) {
-    html = `<audio controls src="${blobUrl}" style="width:100%;"></audio>`;
-  } else if (mimeType.startsWith("video/")) {
-    html = `<video controls src="${blobUrl}" style="width:100%; max-height:300px;"></video>`;
-  } else {
-    html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
-  }
-
-  content.innerHTML = html;
-  modal.style.display = "block";
-}*/
-
-
-// HTMLエスケープ（テキストプレビューでHTMLタグを無効化するため）
-function escapeHtml(text) {
-  return text.replace(/[&<>"']/g, function (m) {
-    return {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[m];
-  });
-}
-
-function closePreview() {
-  document.getElementById("filePreviewModal").style.display = "none";
-}
-    async function createMemo() {
-      if (!mapFileId) { alert("❌ プロジェクトを選択してください。"); return; }
-      const map = await fetchMapJson();
-      const fileName = `新規メモ_${Date.now()}.md`;
-      const metadata = { name: fileName, mimeType: "text/markdown", parents: [map.folders.memo] };
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      form.append("file", new Blob([""], { type: "text/markdown" }));
-      const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
-      });
-      if (!res.ok) { alert("❌ メモ作成に失敗しました"); return; }
-      const newFile = await res.json();
-      map.files.push({ id: newFile.id, name: fileName, path: ["memo"], as: "memo", created: new Date().toISOString() });
-      await saveMap(map);
-      currentEditFileId = newFile.id;
-      showPage('edit');
-      loadFile();
-    }
-
-    async function saveMap(map) {
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
-      form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${mapFileId}?uploadType=multipart`, {
-        method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
-      });
-    }
-
-    // --- アップロード処理 ---
-    let pendingFiles = [];
-    const dropZone = document.getElementById("dropZone");
-    const filePicker = document.getElementById("filePicker");
-    const filePreview = document.getElementById("filePreview");
-
-    dropZone.addEventListener("dragover", e => {
-      e.preventDefault();
-      dropZone.style.background = "#eef";
-    });
-    dropZone.addEventListener("dragleave", () => dropZone.style.background = "");
-    dropZone.addEventListener("drop", e => {
-      e.preventDefault();
-      dropZone.style.background = "";
-      pendingFiles.push(...Array.from(e.dataTransfer.files));
-      refreshPreview();
-    });
-    filePicker.addEventListener("change", e => {
-      pendingFiles.push(...Array.from(e.target.files));
-      refreshPreview();
-      filePicker.value = "";
-    });
-
-    function refreshPreview() {
-      filePreview.innerHTML = "";
-      pendingFiles.forEach((file, index) => {
-        const li = document.createElement("li");
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = `${file.name} (${Math.round(file.size / 1024)} KB) `;
-        li.appendChild(nameSpan);
-
-        const preview = document.createElement("span");
-        preview.style.margin = "0 10px";
-        preview.style.display = "inline-block";
-
-        if (file.type.startsWith("image/")) {
-          const img = document.createElement("img");
-          img.style.maxWidth = "80px";
-          img.style.maxHeight = "60px";
-          img.style.objectFit = "cover";
-          const reader = new FileReader();
-          reader.onload = e => (img.src = e.target.result);
-          reader.readAsDataURL(file);
-          preview.appendChild(img);
-        } else if (file.type.startsWith("video/")) {
-          preview.textContent = "🎞️";
-        } else if (file.type.startsWith("audio/")) {
-          preview.textContent = "🎵";
-        } else if (file.type.startsWith("text/") || file.type === "application/json") {
-          const reader = new FileReader();
-          reader.onload = e => {
-            const content = e.target.result.slice(0, 20).replace(/\n/g, " ");
-            preview.textContent = `📝 ${content}${content.length >= 20 ? "..." : ""}`;
-          };
-          reader.readAsText(file);
-        } else {
-          preview.textContent = "📄";
-        }
-        li.appendChild(preview);
-
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "削除";
-        delBtn.onclick = () => {
-          pendingFiles.splice(index, 1);
-          refreshPreview();
-        };
-        li.appendChild(delBtn);
-
-        filePreview.appendChild(li);
-      });
-    }
-async function uploadAll() {
-  if (!mapFileId) {
-    alert("❌ プロジェクトを選択してください。");
-    return;
-  }
-  if (pendingFiles.length === 0) {
-    alert("アップロードするファイルがありません");
-    return;
-  }
-
-  const map = await fetchMapJson();
-  const uploadRoot = map.folders.data;
-
-  const now = new Date();
-  const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
-  const folderId = await createFolder(folderName, uploadRoot, token);
-
-  for (const file of pendingFiles) {
-    const newFile = await uploadFileToFolder(file, folderId, token);
-    // map.json に追記
-    map.files.push({
-      id: newFile.id,
-      name: file.name,
-      path: "",   // pathは空欄
-      as: "embed",// 固定で embed
-      created: new Date().toISOString()
-    });
-  }
-
-  await saveMap(map);  // map.json更新
-
-  alert("✅ アップロード完了！");
-  pendingFiles = [];
-  refreshPreview();
-  displayFiles();
-}
-
-async function uploadFileToFolder(file, parentId, token) {
-  const metadata = { name: file.name, parents: [parentId] };
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-  form.append("file", file);
-  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: form
-  });
-  return await res.json(); // id取得のためレスポンスを返す
-}
-    /*
-    async function uploadAll() {
-      if (!mapFileId) {
-        alert("❌ プロジェクトを選択してください。");
-        return;
-      }
-      if (pendingFiles.length === 0) {
-        alert("アップロードするファイルがありません");
-        return;
-      }
-
-      const map = await fetchMapJson();
-      const uploadRoot = map.folders.data;
-
-      const now = new Date();
-      const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
-      const folderId = await createFolder(folderName, uploadRoot, token);
-
-      for (const file of pendingFiles) {
-        await uploadFileToFolder(file, folderId, token);
-      }
-
-      alert("✅ アップロード完了！");
-      pendingFiles = [];
-      refreshPreview();
-      displayFiles();
-    }
-
-    async function uploadFileToFolder(file, parentId, token) {
-      const metadata = { name: file.name, parents: [parentId] };
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      form.append("file", file);
-      await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form
-      });
-    }
-*/
-    // ======== Edit 部分 ==========
-    const editor = document.getElementById("editor");
-    const preview = document.getElementById("preview");
-
-    async function loadFile() {
-      if (!currentEditFileId) return;
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${currentEditFileId}?alt=media`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const text = await res.text();
-      editor.value = text;
-      updatePreview();
-    }
-
-    function updatePreview() {
-      preview.innerHTML = marked.parse(editor.value);
-    }
-    editor.addEventListener("input", updatePreview);
-
-    async function save() {
-      if (!currentEditFileId) return;
-      const content = editor.value;
-      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${currentEditFileId}?uploadType=media`, {
-        method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: content
-      });
-      if (res.ok) alert("✅ 保存しました！");
-    }
-
-    // 初期化
-    listProjects();
-    displayFiles();
-  </script>
+    </script>
 </body>
 </html>
