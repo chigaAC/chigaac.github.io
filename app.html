@@ -117,11 +117,6 @@
     <script>
         // ======== 共通部分 ==========
         //ブラウザ、ローカル間の切り替え
-        /*function isElectron() {
-            return typeof window !== 'undefined' &&
-                typeof window.process === 'object' &&
-                window.process.type === 'renderer';
-        }*/
         function isElectron() {
             return navigator.userAgent.toLowerCase().indexOf('electron') !== -1;
         }
@@ -230,8 +225,22 @@
 
         let selectedParentId = null;
         const log = msg => document.getElementById("log").textContent += `\n${msg}`;
+        async function redirectLogin() {
+            if (isElectron()) {
+                const token = await window.electronAPI.login();
+                log("Electron token:", token);
+                if (token) {
+                    localStorage.setItem("accessToken", token);
+                    const expiresAt = Date.now() + 3600 * 1000;
+                    localStorage.setItem("accessTokenExpiresAt", expiresAt);
+                    updateLoginStatus();
+                    listProjects(); // 追加
+                    displayFiles(); // 追加
+                }
+                return;
+            }
 
-        function redirectLogin() {
+            // Web版フロー
             const params = new URLSearchParams({
                 client_id: clientId, redirect_uri: redirectUri, response_type: "token",
                 scope: scope, include_granted_scopes: "true"
