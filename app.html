@@ -63,6 +63,44 @@
             padding: 10px;
             margin-top: 10px;
         }
+
+        #dashboardLayout {
+            display: flex;
+            gap: 1em;
+            margin-top: 1em;
+        }
+
+        #projectTreePanel {
+            width: 25%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+
+        #fileListPanel {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+
+        #projectTreeContainer ul {
+            list-style-type: none;
+            padding-left: 1em;
+            margin: 0;
+        }
+
+        #projectTreeContainer li {
+            cursor: pointer;
+            margin: 0.2em 0;
+        }
+
+            #projectTreeContainer li:hover {
+                background: #eef;
+            }
+
     </style>
 </head>
 <body>
@@ -85,7 +123,6 @@
         <button onclick="startProjectCreation()">プロジェクト作成</button>
         <pre id="log">(ここにログが表示されます)</pre>
     </div>
-
     <!-- Dashboard Page -->
     <div id="page-dashboard" class="page">
         <h2>プロジェクト内容</h2>
@@ -93,19 +130,30 @@
             <option value="">-- プロジェクトを選択 --</option>
         </select>
         <button onclick="createMemo()">📝 メモ新規作成</button>
-        <div id="dropZone">ここにファイルをドラッグ＆ドロップ（または下のボタンで選択）</div>
-        <input type="file" id="filePicker" multiple style="margin-top:10px;" />
-        <ul id="filePreview"></ul>
-        <button onclick="uploadAll()">完了してアップロード</button>
-        <h3>📄 ファイル一覧</h3>
-        <div id="fileList">(読み込み中...)</div>
+
+        <div id="dashboardLayout">
+            <!-- 左カラム：プロジェクト構造木 -->
+            <div id="projectTreePanel">
+                <h3>📂 プロジェクト構造</h3>
+                <div id="projectTreeContainer">(構造木を構築中...)</div>
+            </div>
+
+            <!-- 右カラム：ファイルリスト -->
+            <div id="fileListPanel">
+                <h3>📄 ファイル一覧</h3>
+                <div id="dropZone">ここにファイルをドラッグ＆ドロップ（または下のボタンで選択）</div>
+                <input type="file" id="filePicker" multiple style="margin-top:10px;" />
+                <ul id="filePreview"></ul>
+                <button onclick="uploadAll()">完了してアップロード</button>
+                <div id="fileList">(読み込み中...)</div>
+            </div>
+        </div>
+
         <div id="filePreviewModal" style="display:none; border:1px solid #888; padding:10px; margin-top:20px;">
             <button onclick="closePreview()" style="float:right;">×</button>
             <div id="previewContent">(プレビューがここに表示されます)</div>
         </div>
     </div>
-
-    <!-- Edit Page -->
     <div id="page-edit" class="page">
         <h2 id="projectTitle">📝 Markdown編集</h2>
         <button onclick="save()">💾 保存</button>
@@ -118,8 +166,9 @@
         // ======== 共通部分 ==========
         //ブラウザ、ローカル間の切り替え
         function isElectron() {
-            return navigator.userAgent.toLowerCase().indexOf('electron') !== -1;
+            return !!(window.electronAPI && window.electronAPI.isElectron);
         }
+
         function initModeButton() {
             const btn = document.getElementById('modeSwitchBtn');
             if (!isElectron()) return; // Electron以外では非表示
@@ -132,7 +181,6 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', initModeButton);
         function toggleMode() {
             if (window.location.pathname.endsWith('local.html')) {
                 // local.html -> app.html
@@ -185,10 +233,12 @@
         }
         // ======== ページ切り替え ==========
         function showPage(name) {
+            isdisplaying = 0;
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(`page-${name}`).classList.add('active');
             if (name === 'dashboard') {
                 listProjects();
+                initDashboard();
                 displayFiles();
             }
         }
@@ -282,13 +332,15 @@
             localStorage.setItem("pendingProjectName", projectName);
             localStorage.setItem("pendingParentId", parentId);
 
-            createProject(projectName, parentId, token);
-            // プロジェクト作成完了後
+            const newMapId = await createProject(projectName, parentId, token);
+            if (!newMapId) return;
+
+            // 親の map.json に新プロジェクトを登録
             if (selectedParentId) {
                 const parentMapId = await findParentMapJson(selectedParentId);
                 if (parentMapId) {
                     await updateParentMapWithProject(parentMapId, {
-                        id: mapFileId,
+                        id: newMapId, // ★新しく作成した子プロジェクトの map.json ID を登録
                         name: projectName,
                         path: "",
                         as: "project",
@@ -340,13 +392,8 @@
             log(`  └ プロジェクトフォルダ作成: ${projectId}`);
 
             const memoId = await createFolder("メモ", projectId, token);
-            log(`  └ メモフォルダ作成: ${memoId}`);
-
             const embedId = await createFolder("埋め込みファイル", projectId, token);
-            log(`  └ 埋め込みファイルフォルダ作成: ${embedId}`);
-
             const dataId = await createFolder("アップロードデータ", projectId, token);
-            log(`  └ アップロードデータフォルダ作成: ${dataId}`);
 
             const map = { projectName: name, folders: { memo: memoId, embed: embedId, data: dataId }, files: [] };
             const metadata = { name: "map.json", mimeType: "application/json", parents: [projectId] };
@@ -365,8 +412,10 @@
                 localStorage.setItem("mapFileId", mapInfo.id);
                 mapFileId = mapInfo.id;
                 log("✅ プロジェクト作成完了");
+                return mapInfo.id; // ★新規 map.json の ID を返す
             } else {
                 log("❌ map.json アップロード失敗");
+                return null;
             }
         }
 
@@ -380,6 +429,78 @@
         }
 
         // ======== Dashboard 部分 ==========
+        let selectedProjectId = null;     // 「基準プロジェクト」 (ルートツリー)
+        let currentViewProjectId = null;  // 「表示中のプロジェクト」 (右ペインのダッシュボード)
+        let projectTreeCache = {};        // mapId -> 取得済み map.json のキャッシュ
+        let buildProjectTreeCounter = 0;
+
+        async function buildProjectTree(mapId) {
+            buildProjectTreeCounter++;
+            console.log(`[${buildProjectTreeCounter}] buildProjectTree called with mapId: ${mapId}`);
+
+            if (!mapId) return null;
+            if (projectTreeCache[mapId]) return projectTreeCache[mapId];
+
+            const mapJson = await fetchMapJsonById(mapId);
+            const node = { id: mapId, name: mapJson.projectName || "(無名プロジェクト)", children: [] };
+            projectTreeCache[mapId] = node;
+
+            const files = mapJson.files || [];
+            for (const file of mapJson.files) {
+                if (file.as === "project") {
+                    const childNode = await buildProjectTree(file.id);
+                    if (childNode === node) {
+                        console.error("親ノードを子に追加しようとしています:", node);
+                        continue;
+                    }
+                    childNode.name = file.name || childNode.name;
+                    node.children.push(childNode);
+                }
+            }
+            return node;
+        }
+
+        function renderProjectTreeNode(node) {
+            console.log("renderProjectTreeNode:", node.name, "children:", node.children?.length);
+
+            const li = document.createElement("li");
+            li.textContent = node.name;
+            li.style.cursor = "pointer";
+            li.onclick = (e) => {
+                e.stopPropagation();
+                currentViewProjectId = node.id;
+                displayFiles(currentViewProjectId);
+            };
+
+            if (node.children && node.children.length > 0) {
+                const ul = document.createElement("ul");
+                for (const child of node.children) {
+                    if (child === node) {
+                        console.error("自己参照が発見されました:", node);
+                        continue;
+                    }
+                    ul.appendChild(renderProjectTreeNode(child));
+                }
+                li.appendChild(ul);
+            }
+            return li;
+        }
+
+        function renderProjectTree(container, rootNode) {
+            container.innerHTML = "";
+            const rootUl = document.createElement("ul");
+            rootUl.appendChild(renderProjectTreeNode(rootNode));
+            container.appendChild(rootUl);
+        }
+
+        async function fetchMapJsonById(mapId) {
+            if (!mapId) return null;
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapId}?alt=media`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return await res.json();
+        }
+
         async function fetchMapJson() {
             if (!mapFileId) return null;
             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?alt=media`, {
@@ -409,16 +530,21 @@
                 const option = document.createElement("option");
                 option.value = f.id;
                 option.textContent = parentName;
-                if (f.id === mapFileId) option.selected = true;
+                if (f.id === selectedProjectId) option.selected = true;
                 select.appendChild(option);
             }
         }
-
         function selectProject(id) {
             if (!id) return;
-            mapFileId = id;
-            localStorage.setItem("mapFileId", id);
-            displayFiles();
+
+            // 選択されたプロジェクトを selectedProjectId に反映
+            selectedProjectId = id;
+            localStorage.setItem("mapFileId", id); // 既存の mapFileId も更新（必要なら）
+            currentViewProjectId = id; // 表示プロジェクトも選択されたものに更新
+
+            // ダッシュボードを更新
+            initDashboard();
+            displayFiles(id);
         }
 
         async function listFiles(folderId) {
@@ -448,16 +574,23 @@
                 }
             }
         }
-        async function displayFiles() {
-            const listEl = document.getElementById("fileList");
-            if (!mapFileId) { listEl.textContent = "❌ プロジェクトが選択されていません"; return; }
-            try {
-                const map = await fetchMapJson();
-                if (!map) return;
-                const memoFiles = await listFiles(map.folders.memo);
-                const embedFiles = await listFiles(map.folders.embed);
+        let isdisplaying = 0;
+        async function displayFiles(mapId = currentViewProjectId) {
+            log(isdisplaying);
+            if (isdisplaying == 1) return;
+            if (!mapId) {
+                document.getElementById("fileList").textContent = "❌ プロジェクトが選択されていません";
+                return;
+            }
+            isdisplaying = 1;
 
-                listEl.innerHTML = "<strong>🗂 メモ:</strong><br/>";
+            try {
+                const map = await fetchMapJsonById(mapId);
+                const listEl = document.getElementById("fileList");
+                listEl.innerHTML = "";
+
+                const memoFiles = await listFiles(map.folders.memo);
+                listEl.innerHTML += "<strong>🗂 メモ:</strong><br/>";
                 memoFiles.forEach(f => {
                     const a = document.createElement("a");
                     a.href = "#";
@@ -467,6 +600,7 @@
                     listEl.appendChild(document.createElement("br"));
                 });
 
+                const embedFiles = await listFiles(map.folders.embed);
                 listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
                 embedFiles.forEach(f => {
                     const a = document.createElement("a");
@@ -480,11 +614,25 @@
                     listEl.appendChild(document.createElement("br"));
                 });
 
-                // アップロードデータの項目
                 listEl.innerHTML += "<br/><strong>📦 アップロードデータ:</strong><br/>";
                 await listFolderRecursive(map.folders.data, listEl);
-            } catch (e) { listEl.textContent = "❌ エラー"; console.error(e); }
+            } catch (e) {
+                log(e);
+                document.getElementById("fileList").textContent = "❌ エラー";
+            }
+            isdisplaying = 0;
         }
+        async function initDashboard() {
+            if (!selectedProjectId) {
+                console.warn("selectedProjectId が未設定です");
+                return;
+            }
+            projectTreeCache = {};
+            const treeRoot = await buildProjectTree(selectedProjectId);
+            const container = document.getElementById("projectTreeContainer");
+            renderProjectTree(container, treeRoot);
+        }
+
         const previewCache = {};
         const CACHE_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB未満のファイルをキャッシュ
 
@@ -763,7 +911,8 @@
             });
             if (res.ok) alert("✅ 保存しました！");
         }
-
+        initDashboard();
+        initModeButton();
         // 初期化
         listProjects();
         displayFiles();
