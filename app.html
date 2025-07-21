@@ -440,6 +440,7 @@
                     showPreview(item);
                 };
                 container.appendChild(a);
+                container.appendChild(document.createElement("br"));
 
                 // フォルダの場合は再帰呼び出し
                 if (item.mimeType === "application/vnd.google-apps.folder") {
@@ -463,6 +464,7 @@
                     a.textContent = f.name;
                     a.onclick = () => { currentEditFileId = f.id; showPage('edit'); loadFile(); };
                     listEl.appendChild(a);
+                    listEl.appendChild(document.createElement("br"));
                 });
 
                 listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
@@ -475,6 +477,7 @@
                         showPreview(f);
                     };
                     listEl.appendChild(a);
+                    listEl.appendChild(document.createElement("br"));
                 });
 
                 // アップロードデータの項目
@@ -597,7 +600,7 @@
             });
             if (!res.ok) { alert("❌ メモ作成に失敗しました"); return; }
             const newFile = await res.json();
-            map.files.push({ id: newFile.id, name: fileName, path: ["memo"], as: "memo", created: new Date().toISOString() });
+            map.files.push({ id: newFile.id, name: fileName, path: [""], as: "memo", created: new Date().toISOString() });
             await saveMap(map);
             currentEditFileId = newFile.id;
             showPage('edit');
