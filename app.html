@@ -2,6 +2,16 @@
 <html>
 <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline';
+        connect-src 'self' https://www.googleapis.com https://accounts.google.com;
+        img-src 'self' data: blob:;
+        media-src 'self' blob:;
+        style-src 'self' 'unsafe-inline';
+    ">
+
+
     <title>統合ツール</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -71,7 +81,7 @@
         }
 
         #projectTreePanel {
-            width: 25%;
+            width: 250px;
             border: 1px solid #ccc;
             padding: 10px;
             overflow-y: auto;
@@ -93,6 +103,7 @@
         }
 
         #projectTreeContainer li {
+            list-style: none;
             cursor: pointer;
             margin: 0.2em 0;
         }
@@ -101,6 +112,15 @@
                 background: #eef;
             }
 
+        #fileList ul {
+            list-style-type: none;
+            padding-left: 1em;
+            margin: 0;
+        }
+
+        #fileList li {
+            margin: 0.2em 0;
+        }
     </style>
 </head>
 <body>
@@ -129,7 +149,7 @@
         <select id="projectSelect" onchange="selectProject(this.value)">
             <option value="">-- プロジェクトを選択 --</option>
         </select>
-        <button onclick="createMemo()">📝 メモ新規作成</button>
+        <button onclick="listProjects()">プロジェクト一覧を取得</button>
 
         <div id="dashboardLayout">
             <!-- 左カラム：プロジェクト構造木 -->
@@ -141,6 +161,7 @@
             <!-- 右カラム：ファイルリスト -->
             <div id="fileListPanel">
                 <h3>📄 ファイル一覧</h3>
+                <button onclick="createMemo()">📝 メモ新規作成</button>
                 <div id="dropZone">ここにファイルをドラッグ＆ドロップ（または下のボタンで選択）</div>
                 <input type="file" id="filePicker" multiple style="margin-top:10px;" />
                 <ul id="filePreview"></ul>
@@ -155,12 +176,18 @@
         </div>
     </div>
     <div id="page-edit" class="page">
-        <h2 id="projectTitle">📝 Markdown編集</h2>
-        <button onclick="save()">💾 保存</button>
-        <textarea id="editor"></textarea>
-        <h3>📄 プレビュー</h3>
-        <div id="preview"></div>
+        <h2>✏️ 編集</h2>
+        <!-- タブヘッダ -->
+        <div id="editTabs" class="tab-header">
+            <!-- 例: <button class="tab active" data-id="fileId">ファイル名 ×</button> -->
+        </div>
+
+        <!-- タブごとの編集ビュー -->
+        <div id="editContents" class="tab-contents">
+            <!-- 例: <div class="editorPane active" data-id="fileId">...</div> -->
+        </div>
     </div>
+
 
     <script>
         // ======== 共通部分 ==========
@@ -172,7 +199,6 @@
         function initModeButton() {
             const btn = document.getElementById('modeSwitchBtn');
             if (!isElectron()) return; // Electron以外では非表示
-
             btn.style.display = 'inline-block';
             if (window.location.pathname.endsWith('local.html')) {
                 btn.textContent = 'ブラウザモードに切り替える';
@@ -190,33 +216,39 @@
                 window.location.href = 'local.html';
             }
         }
-
-        async function findParentMapJson(folderId) {
+        async function findParentMapJson(folderId, pathStack = []) {
+            if (!isLogin()) return;
+            const token = getToken();
             if (!folderId || !rootNyuunId) return null;
-
+            //pathStack.unshift("/");
             // 1. 現在のフォルダで map.json を検索
             const query = encodeURIComponent(`'${folderId}' in parents and name = 'map.json' and trashed = false`);
             const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,parents)`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
-            if (data.files.length > 0) return data.files[0].id;
-
-            // 2. 親フォルダを取得
-            const folderRes = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=parents`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            if (data.files.length > 0)
+                return {
+                    parentMapId: data.files[0].id,
+                    path: pathStack
+                };
+            const folderRes = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,parents`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
             const folderData = await folderRes.json();
+
             if (!folderData.parents || folderData.parents.length === 0) return null;
 
             const parentId = folderData.parents[0];
             if (parentId === rootNyuunId) return null; // nyu--nに到達したら終了
+            pathStack.unshift(folderData.name);
 
-            return await findParentMapJson(parentId);
+            return await findParentMapJson(parentId, pathStack);
         }
         async function updateParentMapWithProject(parentMapId, projectInfo) {
             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${parentMapId}?alt=media`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${getToken()}` }
             });
             const parentMap = await res.json();
             parentMap.files.push(projectInfo);
@@ -228,23 +260,26 @@
             form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
             form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
             await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
-                method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
+                method: "PATCH", headers: { Authorization: `Bearer ${getToken()}` }, body: form
             });
         }
         // ======== ページ切り替え ==========
         function showPage(name) {
-            isdisplaying = 0;
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(`page-${name}`).classList.add('active');
+            //if (!token) return; unya
+            if (!isLogin()) return;
             if (name === 'dashboard') {
                 listProjects();
-                initDashboard();
                 displayFiles();
             }
         }
+        function updatePreview() {
+            const editor = document.getElementById("editor");
+            const preview = document.getElementById("preview");
+            preview.innerHTML = marked.parse(editor.value);
+        }
 
-        const token = localStorage.getItem("accessToken");
-        let mapFileId = localStorage.getItem("mapFileId");
         let currentEditFileId = null;
 
         // ======== Index 部分 ==========
@@ -269,6 +304,14 @@
         updateLoginStatus();
         setInterval(updateLoginStatus, 60000);
 
+        function isLogin() {
+            const expiresAt = Number(localStorage.getItem("accessTokenExpiresAt") || "0");
+            return expiresAt > Date.now();
+        }
+        function getToken() {
+            return localStorage.getItem("accessToken");
+        }
+
         const clientId = "295167116096-sva04gs0vtr6hvof2r1cfdtlqre4ohpb.apps.googleusercontent.com";
         const redirectUri = "https://chigaac.github.io/callback.html";
         const scope = "https://www.googleapis.com/auth/drive.file";
@@ -284,8 +327,8 @@
                     const expiresAt = Date.now() + 3600 * 1000;
                     localStorage.setItem("accessTokenExpiresAt", expiresAt);
                     updateLoginStatus();
-                    listProjects(); // 追加
-                    displayFiles(); // 追加
+                    await listProjects(); // 追加
+                    await displayFiles(); // 追加
                 }
                 return;
             }
@@ -299,6 +342,7 @@
         }
 
         async function ensureNyuunFolder(token) {
+            if (!token) return;
             const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
             const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -307,14 +351,14 @@
             if (data.files.length > 0) return data.files[0].id;
             const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                headers: { Authorization: `Bearer ${tokne}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ name: "nyu--n", mimeType: "application/vnd.google-apps.folder" })
             });
             const created = await createRes.json();
             return created.id;
         }
         async function startProjectCreation() {
-            const token = localStorage.getItem("accessToken");
+            const token = getToken();
             if (!token) return log("❌ トークンが未取得です");
 
             const projectName = document.getElementById("projectName").value.trim();
@@ -337,12 +381,13 @@
 
             // 親の map.json に新プロジェクトを登録
             if (selectedParentId) {
-                const parentMapId = await findParentMapJson(selectedParentId);
+                //const parentMapId = await findParentMapJson(selectedParentId);
+                const { parentMapId, path } = await findParentMapJson(selectedParentId);
                 if (parentMapId) {
                     await updateParentMapWithProject(parentMapId, {
                         id: newMapId, // ★新しく作成した子プロジェクトの map.json ID を登録
                         name: projectName,
-                        path: "",
+                        path: path,
                         as: "project",
                         created: new Date().toISOString()
                     });
@@ -357,7 +402,7 @@
         async function findNyuunRootId(token) {
             const query = encodeURIComponent("name = 'nyu--n' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
             const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token }` }
             });
             const data = await res.json();
             if (data.files.length > 0) {
@@ -365,14 +410,14 @@
             }
         }
         async function listFolders() {
-            const token = localStorage.getItem("accessToken");
+            const token = getToken();
             if (!token) {
                 log("❌ トークンが未取得です");
                 return;
             }
             await findNyuunRootId(token);
             const res = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)", {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token }` }
             });
             const result = await res.json();
             const div = document.getElementById("folderList");
@@ -409,8 +454,6 @@
 
             if (upload.ok) {
                 const mapInfo = await upload.json();
-                localStorage.setItem("mapFileId", mapInfo.id);
-                mapFileId = mapInfo.id;
                 log("✅ プロジェクト作成完了");
                 return mapInfo.id; // ★新規 map.json の ID を返す
             } else {
@@ -432,92 +475,30 @@
         let selectedProjectId = null;     // 「基準プロジェクト」 (ルートツリー)
         let currentViewProjectId = null;  // 「表示中のプロジェクト」 (右ペインのダッシュボード)
         let projectTreeCache = {};        // mapId -> 取得済み map.json のキャッシュ
-        let buildProjectTreeCounter = 0;
 
-        async function buildProjectTree(mapId) {
-            buildProjectTreeCounter++;
-            console.log(`[${buildProjectTreeCounter}] buildProjectTree called with mapId: ${mapId}`);
-
-            if (!mapId) return null;
-            if (projectTreeCache[mapId]) return projectTreeCache[mapId];
-
-            const mapJson = await fetchMapJsonById(mapId);
-            const node = { id: mapId, name: mapJson.projectName || "(無名プロジェクト)", children: [] };
-            projectTreeCache[mapId] = node;
-
-            const files = mapJson.files || [];
-            for (const file of mapJson.files) {
-                if (file.as === "project") {
-                    const childNode = await buildProjectTree(file.id);
-                    if (childNode === node) {
-                        console.error("親ノードを子に追加しようとしています:", node);
-                        continue;
-                    }
-                    childNode.name = file.name || childNode.name;
-                    node.children.push(childNode);
-                }
-            }
-            return node;
-        }
-
-        function renderProjectTreeNode(node) {
-            console.log("renderProjectTreeNode:", node.name, "children:", node.children?.length);
-
-            const li = document.createElement("li");
-            li.textContent = node.name;
-            li.style.cursor = "pointer";
-            li.onclick = (e) => {
-                e.stopPropagation();
-                currentViewProjectId = node.id;
-                displayFiles(currentViewProjectId);
-            };
-
-            if (node.children && node.children.length > 0) {
-                const ul = document.createElement("ul");
-                for (const child of node.children) {
-                    if (child === node) {
-                        console.error("自己参照が発見されました:", node);
-                        continue;
-                    }
-                    ul.appendChild(renderProjectTreeNode(child));
-                }
-                li.appendChild(ul);
-            }
-            return li;
-        }
-
-        function renderProjectTree(container, rootNode) {
-            container.innerHTML = "";
-            const rootUl = document.createElement("ul");
-            rootUl.appendChild(renderProjectTreeNode(rootNode));
-            container.appendChild(rootUl);
-        }
-
-        async function fetchMapJsonById(mapId) {
-            if (!mapId) return null;
+        async function fetchMapJsonById(mapId, token) {
+            if (!mapId || !token) return null;
             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapId}?alt=media`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return await res.json();
         }
-
-        async function fetchMapJson() {
-            if (!mapFileId) return null;
-            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${mapFileId}?alt=media`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            return await res.json();
-        }
-
         async function listProjects() {
+            if (!isLogin()) {
+                console.warn("tokenが未取得のため listProjects() をスキップ");
+                return;
+            }
+            const token = getToken();
+
             const res = await fetch(
                 "https://www.googleapis.com/drive/v3/files?q=name='map.json' and trashed=false&fields=files(id,name,parents)",
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
+            const files = data.files || [];
             const select = document.getElementById("projectSelect");
             select.innerHTML = "<option value=''>-- プロジェクトを選択 --</option>";
-            for (const f of data.files) {
+            for (const f of files) {
                 let parentName = "(不明)";
                 if (f.parents && f.parents.length > 0) {
                     const parentId = f.parents[0];
@@ -534,130 +515,317 @@
                 select.appendChild(option);
             }
         }
-        function selectProject(id) {
+        async function selectProject(id) {
             if (!id) return;
 
             // 選択されたプロジェクトを selectedProjectId に反映
             selectedProjectId = id;
-            localStorage.setItem("mapFileId", id); // 既存の mapFileId も更新（必要なら）
             currentViewProjectId = id; // 表示プロジェクトも選択されたものに更新
-
-            // ダッシュボードを更新
-            initDashboard();
-            displayFiles(id);
+            await updateLeftPanel();
+            await updateRightPanel();
         }
-
-        async function listFiles(folderId) {
-            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            return data.files || [];
+        async function updateLeftPanel() {
+            if (!selectedProjectId) {
+                document.getElementById("projectTreeContainer").textContent = "❌ プロジェクトが選択されていません";
+                return;
+            }
+            await renderProjectTree(); // selectedProjectIdに基づいて左ツリー更新
         }
-        // 指定フォルダの中身を再帰的に表示する
-        async function listFolderRecursive(folderId, container, indent = "") {
-            const items = await listFiles(folderId);
-            for (const item of items) {
-                const a = document.createElement("a");
-                a.href = "#";
-                a.textContent = indent + item.name;
-                a.onclick = (e) => {
-                    e.preventDefault();
-                    showPreview(item);
+        async function updateRightPanel() {
+            if (!currentViewProjectId) {
+                document.getElementById("fileList").textContent = "❌ 表示プロジェクトが選択されていません";
+                return;
+            }
+            await displayFiles(currentViewProjectId); // currentViewProjectIdに基づいて右リスト更新
+        }
+        const projectTrees = {};
+
+        async function getProjectData(projectId,token) {
+            if (!projectTrees[projectId]) {
+                const map = await fetchMapJsonById(projectId,token);
+                projectTrees[projectId] = {
+                    map,
+                    projectTree: null,
+                    fileTree: null
                 };
-                container.appendChild(a);
-                container.appendChild(document.createElement("br"));
+            }
+            return projectTrees[projectId];
+        }
+        async function buildProjectTree(projectId,token) {
+            // ここで getProjectData() を呼び出す
+            const projectData = await getProjectData(projectId,token);
+            const prevTree = projectData.projectTree?.find(c => c.id === file.id);
 
-                // フォルダの場合は再帰呼び出し
-                if (item.mimeType === "application/vnd.google-apps.folder") {
-                    await listFolderRecursive(item.id, container, indent + "　"); // 全角スペースでインデント
+            const map = projectData.map;
+
+            const root = {
+                id: projectId,
+                name: map.projectName || "未命名プロジェクト",
+                type: "project",
+                isOpen: prevTree?.isOpen ?? true,
+                children: []
+            };
+
+            for (const file of map.files || []) {
+                if (file.as === "project") {
+                    const prevChild = prevTree?.children?.find(c => c.id === file.id);
+                    const childTree = await buildProjectTree(file.id,token);
+                    root.children.push(childTree);
+                }
+            }
+
+            return root;
+        }
+
+        function renderProjectTreeNode(node) {
+            const li = document.createElement("li");
+
+            const toggle = document.createElement("span");
+            toggle.textContent = node.isOpen ? "∨" : "＞";
+            toggle.style.cursor = "pointer";
+            toggle.style.marginRight = "5px";
+            toggle.onclick = () => {
+                node.isOpen = !node.isOpen;
+                toggle.textContent = node.isOpen ? "∨" : "＞";
+                childContainer.style.display = node.isOpen ? "block" : "none";
+            };
+
+            const label = document.createElement("span");
+            label.textContent = `📁 ${node.name}`;
+            label.style.cursor = "pointer";
+            label.onclick = () => {
+                currentViewProjectId = node.id;
+                updateRightPanel();
+            };
+
+            const childContainer = document.createElement("ul");
+            childContainer.style.display = node.isOpen ? "block" : "none";
+            node.children.forEach(child => childContainer.appendChild(renderProjectTreeNode(child)));
+
+            li.appendChild(toggle);
+            li.appendChild(label);
+            li.appendChild(childContainer);
+
+            return li;
+        }
+
+        async function renderProjectTree() {
+            if (!selectedProjectId) {
+                document.getElementById("projectTreeContainer").textContent = "❌ プロジェクトが選択されていません";
+                return;
+            }
+            const token = getToken();
+
+            const tree = await buildProjectTree(selectedProjectId,token);
+
+            const container = document.getElementById("projectTreeContainer");
+            container.innerHTML = "";
+            container.appendChild(renderProjectTreeNode(tree));
+        }
+
+        function renderFileTreeNode(node, parentPath = "",token) {
+            const li = document.createElement("li");
+            const label = document.createElement("span");
+
+            // 編集ボタン（✏️）
+            const editBtn = document.createElement("button");
+            editBtn.textContent = "✏️";
+            editBtn.style.marginLeft = "8px";
+            editBtn.onclick = (e) => {
+                e.stopPropagation(); // ファイル/フォルダ開閉イベントを阻止
+                openEditTab(node);    // 新規タブ作成 & Editページへ
+            };
+
+            if (node.type === "folder" || node.type === "project") {
+                label.textContent =
+                    node.type === "project"
+                        ? `👾 ${node.name} (Project)`
+                        : `📁 ${node.name} (${node.children.length})`;
+
+                const toggle = document.createElement("span");
+                toggle.style.cursor = "pointer";
+                toggle.style.marginRight = "5px";
+                toggle.textContent = node.isOpen ? "∨" : "＞";
+                const childContainer = document.createElement("ul");
+                childContainer.style.display = node.isOpen ? "block" : "none";
+
+                toggle.onclick = async () => {
+                    node.isOpen = !node.isOpen;
+                    toggle.textContent = node.isOpen ? "∨" : "＞";
+                    childContainer.style.display = node.isOpen ? "block" : "none";
+
+                    // サブプロジェクトを初回展開
+                    if (node.type === "project" && node.isOpen) {
+                        if (!fileTrees[node.id]) {
+                            const subMap = await fetchMapJsonById(node.id, token);
+                            fileTrees[node.id] = buildFileTree(subMap);
+                        }
+                        node.children = fileTrees[node.id].children;
+
+                        childContainer.innerHTML = "";
+                        node.children.forEach(child =>
+                            childContainer.appendChild(renderFileTreeNode(child, `${parentPath}/${node.name}`,token))
+                        );
+                    }
+                };
+
+                li.appendChild(toggle);
+                li.appendChild(label);
+                li.appendChild(editBtn); // ✏️ボタンを追加
+                li.appendChild(childContainer);
+
+                node.children.forEach(child =>
+                    childContainer.appendChild(renderFileTreeNode(child, `${parentPath}/${node.name}`,token))
+                );
+            } else {
+                label.textContent = `📄 ${node.name}`;
+                li.style.cursor = "pointer";
+
+                li.onclick = () => {
+                    showPreview(node);
+                };
+
+                li.appendChild(label);
+                li.appendChild(editBtn); // ✏️ボタンを追加
+            }
+
+            return li;
+        }
+
+        function renderFileTree(tree,token) {
+            const container = document.getElementById("fileList");
+            container.innerHTML = "";
+
+            const ul = document.createElement("ul");
+            tree.children.forEach(child => ul.appendChild(renderFileTreeNode(child,"",token)));
+            container.appendChild(ul);
+        }
+        // --- 右パネル用ツリーキャッシュ ---
+        const fileTrees = {};  // projectId -> fileTree
+
+        function buildFileTree(map, prevTree = null) {
+            const root = prevTree || { name: "(root)", type: "folder", isOpen: true, children: [] };
+            root.children = [];  // フルリセットして差し替え
+
+            const topFolders = ["メモ", "埋め込みファイル", "アップロードデータ"];
+            for (const folderName of topFolders) {
+                const prevNode = prevTree?.children?.find(c => c.name === folderName && c.type === "folder");
+                root.children.push({
+                    name: folderName,
+                    type: "folder",
+                    isOpen: prevNode?.isOpen ?? true,
+                    children: []
+                });
+            }
+
+            addFilesToTree(root, map.files || [], prevTree);
+            return root;
+        }
+
+        function addFilesToTree(parent, files, prevParent = null) {
+            for (const file of files) {
+                const pathParts = Array.isArray(file.path) ? file.path : (file.path ? [file.path] : []);
+                let currentNode = parent;
+                let prevNode = prevParent;
+
+                for (const part of pathParts) {
+                    let folderNode = currentNode.children.find(c => c.name === part && c.type === "folder");
+                    let prevFolder = prevNode?.children?.find(c => c.name === part && c.type === "folder");
+
+                    if (!folderNode) {
+                        folderNode = {
+                            name: part,
+                            type: "folder",
+                            isOpen: prevFolder?.isOpen ?? false,
+                            children: []
+                        };
+                        currentNode.children.push(folderNode);
+                    }
+
+                    currentNode = folderNode;
+                    prevNode = prevFolder;
+                }
+
+                const existing = currentNode.children.find(c => c.name === file.name && c.type !== "folder");
+                if (!existing) {
+                    const prevFileNode = prevNode?.children?.find(c => c.name === file.name);
+                    currentNode.children.push({
+                        ...file,
+                        name: file.name,
+                        type: file.as === "project" ? "project" : (file.as || "file"),
+                        isOpen: prevFileNode?.isOpen ?? false,
+                        children: []
+                    });
                 }
             }
         }
-        let isdisplaying = 0;
-        async function displayFiles(mapId = currentViewProjectId) {
-            log(isdisplaying);
-            if (isdisplaying == 1) return;
-            if (!mapId) {
-                document.getElementById("fileList").textContent = "❌ プロジェクトが選択されていません";
-                return;
+        async function addFiles(mapId = currentViewProjectId, newFiles) {
+            const token = getToken();
+            if (fileTrees[mapId]) {
+                addFilesToTree(fileTrees[mapId], newFiles);
+                renderFileTree(fileTrees[mapId],token);
+            } else {
+                // キャッシュがまだない場合は初期化
+                fileTrees[mapId] = buildFileTree(map);
+                renderFileTree(fileTrees[mapId],token);
             }
-            isdisplaying = 1;
-
-            try {
-                const map = await fetchMapJsonById(mapId);
-                const listEl = document.getElementById("fileList");
-                listEl.innerHTML = "";
-
-                const memoFiles = await listFiles(map.folders.memo);
-                listEl.innerHTML += "<strong>🗂 メモ:</strong><br/>";
-                memoFiles.forEach(f => {
-                    const a = document.createElement("a");
-                    a.href = "#";
-                    a.textContent = f.name;
-                    a.onclick = () => { currentEditFileId = f.id; showPage('edit'); loadFile(); };
-                    listEl.appendChild(a);
-                    listEl.appendChild(document.createElement("br"));
-                });
-
-                const embedFiles = await listFiles(map.folders.embed);
-                listEl.innerHTML += "<br/><strong>🖇 埋め込みファイル:</strong><br/>";
-                embedFiles.forEach(f => {
-                    const a = document.createElement("a");
-                    a.href = "#";
-                    a.textContent = f.name;
-                    a.onclick = (e) => {
-                        e.preventDefault();
-                        showPreview(f);
-                    };
-                    listEl.appendChild(a);
-                    listEl.appendChild(document.createElement("br"));
-                });
-
-                listEl.innerHTML += "<br/><strong>📦 アップロードデータ:</strong><br/>";
-                await listFolderRecursive(map.folders.data, listEl);
-            } catch (e) {
-                log(e);
-                document.getElementById("fileList").textContent = "❌ エラー";
-            }
-            isdisplaying = 0;
         }
+        async function displayFiles(mapId = currentViewProjectId) {
+            if (!mapId) return;
+            const token = getToken();
+            if (!fileTrees[mapId]) {
+                const map = await fetchMapJsonById(mapId, token);
+                fileTrees[mapId] = buildFileTree(map);
+            }
+            renderFileTree(fileTrees[mapId],token);
+        }
+
         async function initDashboard() {
             if (!selectedProjectId) {
                 console.warn("selectedProjectId が未設定です");
                 return;
             }
-            projectTreeCache = {};
-            const treeRoot = await buildProjectTree(selectedProjectId);
-            const container = document.getElementById("projectTreeContainer");
-            renderProjectTree(container, treeRoot);
+            const token = getToken();
+            renderProjectTree(token);
         }
 
-        const previewCache = {};
-        const CACHE_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB未満のファイルをキャッシュ
+        const previewCache = {};       // { fileId: { html, blobUrl, size } }
+        const previewCacheOrder = [];
+        const MAX_CACHE_ITEMS = 20;
+        let previewCacheTotalSize = 0;  // キャッシュ合計サイズ（bytes）
 
         async function showPreview(file) {
             const modal = document.getElementById("filePreviewModal");
             const content = document.getElementById("previewContent");
-            content.innerHTML = "読み込み中...";
+            //content.innerHTML = "読み込み中...";
 
-            const alwaysFetch = (file.name === "map.json"); // map.jsonは常に最新取得
+            const alwaysFetch = (file.name === "map.json");
+            const token = getToken();
 
-            // キャッシュがあれば再fetchせずに表示（map.jsonは除外）
-            if (!alwaysFetch && previewCache[file.id]) {
-                content.innerHTML = previewCache[file.id];
-                modal.style.display = "block";
-                return;
-            }
-
-            // ファイルメタデータ取得（サイズも取得）
+            // ファイルメタデータ取得
             const fileMetaRes = await fetch(
                 `https://www.googleapis.com/drive/v3/files/${file.id}?fields=mimeType,size`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const fileMeta = await fileMetaRes.json();
             const mimeType = fileMeta.mimeType || "application/octet-stream";
-            const fileSize = parseInt(fileMeta.size || "0", 10);
+
+            // --- キャッシュがあれば再利用 ---
+            if (!alwaysFetch && previewCache[file.id]) {
+                console.log(`キャッシュサイズ: ${previewCache[file.id].size} bytes`);
+                debugPreviewCache();
+
+                // --- キャッシュ順序を更新（先頭に移動） ---
+                const index = previewCacheOrder.indexOf(file.id);
+                if (index !== -1) {
+                    previewCacheOrder.splice(index, 1);  // 既存位置を削除
+                    previewCacheOrder.unshift(file.id);  // 先頭に追加
+                }
+
+                content.innerHTML = previewCache[file.id].html;
+                modal.style.display = "block";
+                return;
+            }
 
             let html = "";
 
@@ -673,8 +841,7 @@
                         : textContent;
                 html = `<pre style="white-space:pre-wrap; max-height:300px; overflow:auto;">${escapeHtml(previewText)}</pre>`;
 
-                // キャッシュ（map.json以外かつ1MB未満のみ）
-                if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) previewCache[file.id] = html;
+                if (!alwaysFetch) addPreviewCache(file.id, html, null, textContent.length);
 
                 content.innerHTML = html;
                 modal.style.display = "block";
@@ -698,27 +865,52 @@
                 html = `<p>このファイルタイプはプレビューに対応していません。</p>`;
             }
 
-            // キャッシュ（map.json以外かつ1MB未満のみ）
-            if (!alwaysFetch && fileSize < CACHE_SIZE_LIMIT) {
-                const base64Url = await blobToBase64(blob);
-                previewCache[file.id] = html.replace(blobUrl, base64Url);
-                URL.revokeObjectURL(blobUrl);
-                content.innerHTML = previewCache[file.id];
-            } else {
-                content.innerHTML = html;
-            }
+            if (!alwaysFetch) addPreviewCache(file.id, html, blobUrl, blob.size);
 
+            console.log(`取得サイズ: ${blob.size} bytes`);
+            debugPreviewCache();
+            content.innerHTML = html;
             modal.style.display = "block";
         }
+        function addPreviewCache(fileId, html, blobUrl, size) {
+            // 既存キャッシュがある場合は、サイズを減算して古いBlob URLを解放
+            if (previewCache[fileId]) {
+                previewCacheTotalSize -= (previewCache[fileId].size || 0);
+                if (previewCache[fileId].blobUrl) URL.revokeObjectURL(previewCache[fileId].blobUrl);
+                previewCacheOrder.splice(previewCacheOrder.indexOf(fileId), 1);
+            }
 
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            // 新規キャッシュ登録
+            previewCache[fileId] = { html, blobUrl, size };
+            previewCacheOrder.unshift(fileId); // 先頭に追加（LRU対応）
+
+            // サイズ加算
+            previewCacheTotalSize += (size || 0);
+
+            // 最大件数を超えた場合、古いキャッシュを削除
+            while (previewCacheOrder.length > MAX_CACHE_ITEMS) {
+                const oldId = previewCacheOrder.pop();
+                if (previewCache[oldId]) {
+                    previewCacheTotalSize -= (previewCache[oldId].size || 0);
+                    if (previewCache[oldId].blobUrl) URL.revokeObjectURL(previewCache[oldId].blobUrl);
+                    delete previewCache[oldId];
+                }
+            }
+
+            console.log(`現在のキャッシュ合計サイズ: ${previewCacheTotalSize} bytes`);
         }
+
+        function debugPreviewCache() {
+            const table = Object.entries(previewCache).map(([id, entry]) => ({
+                fileId: id,
+                size: entry.size ? `${entry.size} bytes` : "-",
+                hasBlobUrl: !!entry.blobUrl
+            }));
+            console.table(table);
+            console.log("キャッシュ順序:", previewCacheOrder);
+            console.log(`キャッシュ合計サイズ: ${previewCacheTotalSize} bytes`);
+        }
+
         // HTMLエスケープ（テキストプレビューでHTMLタグを無効化するため）
         function escapeHtml(text) {
             return text.replace(/[&<>"']/g, function (m) {
@@ -736,33 +928,74 @@
             document.getElementById("filePreviewModal").style.display = "none";
         }
         async function createMemo() {
-            if (!mapFileId) { alert("❌ プロジェクトを選択してください。"); return; }
-            const map = await fetchMapJson();
+            if (!currentViewProjectId) {
+                alert("❌ プロジェクトを選択してください。");
+                return;
+            }
+
+            // map.json を取得
+            const map = await fetchMapJsonById(currentViewProjectId);
             const fileName = `新規メモ_${Date.now()}.md`;
             const metadata = { name: fileName, mimeType: "text/markdown", parents: [map.folders.memo] };
+
+            // 空のメモファイルをアップロード
             const form = new FormData();
             form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
             form.append("file", new Blob([""], { type: "text/markdown" }));
+
             const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-                method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form
+                method: "POST",
+                headers: { Authorization: `Bearer ${getToken()}` },
+                body: form
             });
-            if (!res.ok) { alert("❌ メモ作成に失敗しました"); return; }
+            if (!res.ok) {
+                alert("❌ メモ作成に失敗しました");
+                return;
+            }
+
+            // 新規ファイルの情報を取得
             const newFile = await res.json();
-            map.files.push({ id: newFile.id, name: fileName, path: [""], as: "memo", created: new Date().toISOString() });
+            const fileEntry = {
+                id: newFile.id,
+                name: fileName,
+                path: ["メモ"],
+                as: "memo",
+                created: new Date().toISOString()
+            };
+
+            // map.json に追加
+            map.files.push(fileEntry);
             await saveMap(map);
-            currentEditFileId = newFile.id;
-            showPage('edit');
-            loadFile();
+
+            // ファイルツリーに反映
+            addFiles(currentViewProjectId, [fileEntry]);
+
+            // タブを開く
+            openEditTab(fileEntry);
         }
 
-        async function saveMap(map) {
+        async function saveMap(map, id = currentViewProjectId) {
+            if (!id) { alert("❌ プロジェクトを選択してください。"); return; }
             const form = new FormData();
-            form.append("metadata", new Blob([JSON.stringify({ name: "map.json", mimeType: "application/json" })], { type: "application/json" }));
-            form.append("file", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
-            await fetch(`https://www.googleapis.com/upload/drive/v3/files/${mapFileId}?uploadType=multipart`, {
-                method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: form
+            form.append(
+                "metadata",
+                new Blob(
+                    [JSON.stringify({ name: "map.json", mimeType: "application/json" })],
+                    { type: "application/json" }
+                )
+            );
+            form.append(
+                "file",
+                new Blob([JSON.stringify(map, null, 2)], { type: "application/json" })
+            );
+
+            await fetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${getToken()}` },
+                body: form
             });
         }
+
 
         // --- アップロード処理 ---
         let pendingFiles = [];
@@ -836,7 +1069,7 @@
             });
         }
         async function uploadAll() {
-            if (!mapFileId) {
+            if (!currentViewProjectId) {
                 alert("❌ プロジェクトを選択してください。");
                 return;
             }
@@ -844,32 +1077,43 @@
                 alert("アップロードするファイルがありません");
                 return;
             }
+            const token = getToken();
 
-            const map = await fetchMapJson();
+            // map.json を取得
+            const map = await fetchMapJsonById(currentViewProjectId, token);
             const uploadRoot = map.folders.data;
 
+            // 新しいアップロードフォルダを作成
             const now = new Date();
             const folderName = now.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
             const folderId = await createFolder(folderName, uploadRoot, token);
 
+            // ファイルを順次アップロード
+            const newFiles = [];
             for (const file of pendingFiles) {
                 const newFile = await uploadFileToFolder(file, folderId, token);
+
                 // map.json に追記
-                map.files.push({
+                const fileEntry = {
                     id: newFile.id,
                     name: file.name,
-                    path: "",   // pathは空欄
-                    as: "embed",// 固定で embed
+                    path: ["アップロードデータ", folderName],
+                    as: "embed",  // 固定で embed
                     created: new Date().toISOString()
-                });
+                };
+                map.files.push(fileEntry);
+                newFiles.push(fileEntry);
             }
 
-            await saveMap(map);  // map.json更新
+            // map.json を保存
+            await saveMap(map);
 
+            addFiles(currentViewProjectId, newFiles);
+
+            // UI更新
             alert("✅ アップロード完了！");
             pendingFiles = [];
             refreshPreview();
-            displayFiles();
         }
 
         async function uploadFileToFolder(file, parentId, token) {
@@ -888,29 +1132,164 @@
         const editor = document.getElementById("editor");
         const preview = document.getElementById("preview");
 
-        async function loadFile() {
-            if (!currentEditFileId) return;
-            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${currentEditFileId}?alt=media`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const text = await res.text();
-            editor.value = text;
-            updatePreview();
+        function openEditTab(file) {
+            // 既にタブがあるか確認
+            const existingTab = document.querySelector(`#editTabs .tab[data-id="${file.id}"]`);
+            if (existingTab) {
+                setActiveTab(file.id);
+                showPage('edit');
+                return;
+            }
+
+            // タブ作成
+            const tabBtn = document.createElement("button");
+            tabBtn.className = "tab";
+            tabBtn.dataset.id = file.id;
+            tabBtn.textContent = file.name;
+
+            // ×ボタン
+            const closeBtn = document.createElement("span");
+            closeBtn.textContent = " ×";
+            closeBtn.onclick = e => { e.stopPropagation(); closeTab(file.id); };
+            tabBtn.appendChild(closeBtn);
+
+            tabBtn.onclick = () => setActiveTab(file.id);
+            document.getElementById("editTabs").appendChild(tabBtn);
+
+            // エディタビュー作成
+            const content = document.createElement("div");
+            content.className = "editorPane";
+            content.dataset.id = file.id;
+            document.getElementById("editContents").appendChild(content);
+
+            // ファイルタイプ別UI
+            createEditView(content, file);
+
+            setActiveTab(file.id);
+            showPage('edit');
+        }
+        async function loadFileContent(fileId, textarea, preview) {
+            try {
+                // ファイル内容を取得
+                const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    textarea.value = "";
+                    preview.innerHTML = "<p>❌ ファイルの読み込みに失敗しました</p>";
+                    return;
+                }
+                const text = await res.text();
+                textarea.value = text;
+
+                // プレビュー更新（Markdown対応）
+                const updatePreview = () => {
+                    preview.innerHTML = marked.parse(textarea.value);
+                };
+                textarea.addEventListener("input", updatePreview);
+                updatePreview();  // 初期表示
+            } catch (e) {
+                console.error("loadFileContent error:", e);
+                textarea.value = "";
+                preview.innerHTML = "<p>❌ 読み込み中にエラーが発生しました</p>";
+            }
         }
 
-        function updatePreview() {
-            preview.innerHTML = marked.parse(editor.value);
-        }
-        editor.addEventListener("input", updatePreview);
+        function createEditView(container, file) {
+            // ファイル名変更UI
+            const nameInput = document.createElement("input");
+            nameInput.value = file.name;
+            const renameBtn = document.createElement("button");
+            renameBtn.textContent = "名前を保存";
+            renameBtn.onclick = () => renameFile(file.id, nameInput.value);
+            container.appendChild(nameInput);
+            container.appendChild(renameBtn);
+            const saveBtn = document.createElement("button");
+            saveBtn.textContent = "内容を保存";
+            saveBtn.onclick = () => saveFile(file.id, textarea.value);
+            container.appendChild(saveBtn);
 
-        async function save() {
-            if (!currentEditFileId) return;
-            const content = editor.value;
-            const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${currentEditFileId}?uploadType=media`, {
-                method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: content
-            });
-            if (res.ok) alert("✅ 保存しました！");
+            // 内容編集UI
+            if (file.as === "memo" || file.mimeType?.includes("markdown") || file.mimeType?.startsWith("text/")) {
+                const textarea = document.createElement("textarea");
+                container.appendChild(textarea);
+
+                const preview = document.createElement("div");
+                container.appendChild(preview);
+
+                // ファイルロード
+                loadFileContent(file.id, textarea, preview);
+
+                // 保存ボタン
+                const saveBtn = document.createElement("button");
+                saveBtn.textContent = "内容を保存";
+                saveBtn.onclick = () => saveFile(file.id, textarea.value);
+                container.appendChild(saveBtn);
+            } else if (file.mimeType?.startsWith("image/") || file.mimeType?.startsWith("video/")) {
+                const preview = document.createElement(file.mimeType.startsWith("image/") ? "img" : "video");
+                preview.controls = file.mimeType.startsWith("video/");
+                preview.style.maxWidth = "100%";
+                container.appendChild(preview);
+                loadPreviewFile(file.id, preview);
+            } else if (file.type === "folder") {
+                const note = document.createElement("p");
+                note.textContent = "フォルダは名前変更のみ可能です。";
+                container.appendChild(note);
+            }
         }
+        function setActiveTab(tabId) {
+            document.querySelectorAll("#editTabs .tab").forEach(tab =>
+                tab.classList.toggle("active", tab.dataset.id === tabId)
+            );
+            document.querySelectorAll("#editContents .editorPane").forEach(pane =>
+                pane.classList.toggle("active", pane.dataset.id === tabId)
+            );
+        }
+        function closeTab(tabId) {
+            const tabBtn = document.querySelector(`#editTabs .tab[data-id="${tabId}"]`);
+            const content = document.querySelector(`#editContents .editorPane[data-id="${tabId}"]`);
+            if (tabBtn) tabBtn.remove();
+            if (content) content.remove();
+            // 他のタブがあれば最初をアクティブ化
+            const firstTab = document.querySelector("#editTabs .tab");
+            if (firstTab) setActiveTab(firstTab.dataset.id);
+        }
+        async function renameFile(fileId, newName) {
+            // Google Drive 側
+            await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ name: newName })
+            });
+
+            // map.json 側
+            const map = await fetchMapJsonById(currentViewProjectId);
+            const target = map.files.find(f => f.id === fileId);
+            if (target) target.name = newName;
+            await saveMap(map);
+
+            alert("✅ 名前を変更しました");
+        }
+        async function saveFile(fileId, content) {
+            try {
+                const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${getToken()}` },
+                    body: content
+                });
+
+                if (!res.ok) {
+                    alert("❌ ファイルの保存に失敗しました");
+                    console.error(await res.text());
+                    return;
+                }
+                alert("✅ ファイルを保存しました！");
+            } catch (e) {
+                console.error("saveFile error:", e);
+                alert("❌ 保存中にエラーが発生しました");
+            }
+        }
+
         initDashboard();
         initModeButton();
         // 初期化
